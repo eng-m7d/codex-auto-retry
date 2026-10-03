@@ -13,9 +13,9 @@ import (
 const memoryAlertTimeout = 15 * time.Second
 
 func showMemoryLimitAlert(sample memorySample, limitMB int) {
-	title, titleErr := windows.UTF16PtrFromString("Codex Auto Retry 已自动停止")
+	title, titleErr := windows.UTF16PtrFromString("تم إيقاف Codex Auto Retry تلقائياً")
 	message, messageErr := windows.UTF16PtrFromString(fmt.Sprintf(
-		"后台进程私有内存已达到 %d MB，超过设定上限 %d MB。\n\n已自动停止自动重试服务，Codex 和任务数据未被删除。请关闭其他异常进程后，从启动管理器重新启动服务。",
+		"بلغت ذاكرة عملية الخلفية %d MB وتجاوزت الحد المحدد %d MB.\n\nتم إيقاف خدمة الاستئناف التلقائي تلقائياً من دون حذف Codex أو بيانات المهام. بعد إغلاق العمليات غير الطبيعية، أعد تشغيل الخدمة من مدير بدء التشغيل.",
 		memoryBytesToMB(sample.PrivateBytes), limitMB,
 	))
 	if titleErr != nil || messageErr != nil {
