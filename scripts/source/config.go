@@ -39,7 +39,7 @@ type Config struct {
 
 const legacyRetryPrompt = "Continue the interrupted task from its current state. The previous turn ended because the model provider was temporarily unavailable. First inspect the existing conversation and workspace state, do not repeat completed side effects, then continue toward the user's latest request. Do not discuss the retry mechanism unless it affects the result."
 
-const defaultRetryPrompt = "继续"
+const defaultRetryPrompt = "تابع"
 
 const maxRetryPromptRunes = 500
 
@@ -202,7 +202,7 @@ func loadOrCreateConfigUnlocked(path string) (Config, error) {
 		cfg.SharedAppServerPort = defaultSharedAppServerPort
 		changed = true
 	}
-	if cfg.RetryPrompt == legacyRetryPrompt || cfg.RetryPrompt == "Continue." {
+	if cfg.RetryPrompt == legacyRetryPrompt || cfg.RetryPrompt == "Continue." || cfg.RetryPrompt == "继续" {
 		cfg.RetryPrompt = defaultRetryPrompt
 		changed = true
 	}
@@ -280,7 +280,7 @@ const (
 
 func (c Config) retrySafetyWarning() string {
 	if c.MaxRecoveryAttempts > recommendedMaxRecoveryAttempts || c.MaxConsecutiveRetries > recommendedMaxConsecutiveRetries {
-		return fmt.Sprintf("重试上限偏激进（本次故障 %d 次、连续无进展 %d 次），建议不超过 %d/%d", c.MaxRecoveryAttempts, c.MaxConsecutiveRetries, recommendedMaxRecoveryAttempts, recommendedMaxConsecutiveRetries)
+		return fmt.Sprintf("حدود المحاولات مرتفعة (التعافي من العطل %d، والمحاولات المتتالية دون تقدّم %d). يُنصح بألا تتجاوز %d/%d", c.MaxRecoveryAttempts, c.MaxConsecutiveRetries, recommendedMaxRecoveryAttempts, recommendedMaxConsecutiveRetries)
 	}
 	return ""
 }
