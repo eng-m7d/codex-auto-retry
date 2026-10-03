@@ -27,7 +27,7 @@ func usageLimitRetryAt(errorText string, now time.Time) (time.Time, bool) {
 	value := strings.TrimSpace(match[1])
 	value = strings.TrimRight(value, " ,;")
 	value = ordinalDayPattern.ReplaceAllString(value, "$1")
-	location := now.Location()
+	location := time.Local
 
 	for _, layout := range []string{"Jan 2, 2006 3:04 PM", "January 2, 2006 3:04 PM"} {
 		if parsed, err := time.ParseInLocation(layout, value, location); err == nil {
