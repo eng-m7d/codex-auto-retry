@@ -77,6 +77,7 @@ type ManagementSnapshot struct {
 	ControllerState                     string         `json:"controller_state,omitempty" jsonschema:"background Codex controller state"`
 	Notice                              string         `json:"notice,omitempty" jsonschema:"result of the most recent management action"`
 	Retries                             []ManagedRetry `json:"retries" jsonschema:"current retry queue"`
+	Usage                               CodexUsageSnapshot `json:"usage" jsonschema:"official Codex usage limit snapshot"`
 }
 
 type managementService struct {
@@ -85,8 +86,10 @@ type managementService struct {
 	controlPath string
 	commandDir  string
 	statePath   string
-	statusPath  string
-	mu          sync.Mutex
+	statusPath   string
+	mu           sync.Mutex
+	usageCache   CodexUsageSnapshot
+	usageCacheAt time.Time
 }
 
 func newManagementService(dataDir string) *managementService {
@@ -148,6 +151,7 @@ func (m *managementService) snapshotLocked(now time.Time) (ManagementSnapshot, e
 		}
 	}
 	retries = visibleRetries
+	usage := m.usageSnapshotLocked(config, now)
 
 	snapshot := ManagementSnapshot{
 		Version:                      appVersion,
@@ -177,6 +181,7 @@ func (m *managementService) snapshotLocked(now time.Time) (ManagementSnapshot, e
 		ActiveRetries:                active,
 		StoppedRetries:               stopped,
 		Retries:                      retries,
+		Usage:                        usage,
 	}
 	if statusFound {
 		if running {
