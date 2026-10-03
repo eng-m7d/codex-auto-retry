@@ -708,6 +708,18 @@ input[type="number"] {
   opacity: 0.45;
 }
 
+html[dir="rtl"] .switch-thumb {
+  transform: translateX(16px);
+}
+
+html[dir="rtl"] .switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(0);
+}
+
+html[dir="rtl"] .usage-progress > span {
+  margin-inline-start: auto;
+}
+
 .prompt-label-row {
   justify-content: space-between;
   gap: 12px;
