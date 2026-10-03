@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+func withLocalZone(t *testing.T, location *time.Location) {
+	t.Helper()
+	previous := time.Local
+	time.Local = location
+	t.Cleanup(func() { time.Local = previous })
+}
+
 func TestOfficialUsageLimitIsClassifiedSeparately(t *testing.T) {
 	decision := classifyFailure("You’ve hit your usage limit. Try again at 11:45 PM.", defaultConfig())
 	if !decision.Retry || decision.Class != classUsageLimit {
@@ -14,7 +21,8 @@ func TestOfficialUsageLimitIsClassifiedSeparately(t *testing.T) {
 
 func TestUsageLimitRetryAtParsesOfficialSameDayFormat(t *testing.T) {
 	location := time.FixedZone("UTC+3", 3*60*60)
-	now := time.Date(2026, 10, 3, 19, 30, 0, 0, location)
+	withLocalZone(t, location)
+	now := time.Date(2026, 10, 3, 16, 30, 0, 0, time.UTC)
 	got, ok := usageLimitRetryAt("You’ve hit your usage limit. Try again at 11:45 PM.", now)
 	want := time.Date(2026, 10, 3, 23, 45, 0, 0, location)
 	if !ok || !got.Equal(want) {
@@ -24,7 +32,8 @@ func TestUsageLimitRetryAtParsesOfficialSameDayFormat(t *testing.T) {
 
 func TestUsageLimitRetryAtParsesOfficialDatedFormat(t *testing.T) {
 	location := time.FixedZone("UTC+3", 3*60*60)
-	now := time.Date(2026, 10, 3, 23, 30, 0, 0, location)
+	withLocalZone(t, location)
+	now := time.Date(2026, 10, 3, 20, 30, 0, 0, time.UTC)
 	got, ok := usageLimitRetryAt("You’ve hit your usage limit. Try again at Oct 4th, 2026 3:45 PM.", now)
 	want := time.Date(2026, 10, 4, 15, 45, 0, 0, location)
 	if !ok || !got.Equal(want) {
@@ -39,7 +48,8 @@ func TestUsageLimitSchedulingWaitsForResetAndBypassesTimeGuard(t *testing.T) {
 	d := newTestDaemon(t, config, successfulRunner())
 	threadID := "019fa94e-0103-7183-b405-36bd307b6dc1"
 	location := time.FixedZone("UTC+3", 3*60*60)
-	now := time.Date(2026, 10, 3, 19, 30, 0, 0, location)
+	withLocalZone(t, location)
+	now := time.Date(2026, 10, 3, 16, 30, 0, 0, time.UTC)
 	thread := ThreadState{
 		RecoveryAttempts:   10,
 		ConsecutiveRetries: 10,
