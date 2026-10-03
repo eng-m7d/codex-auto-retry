@@ -64,12 +64,12 @@ function Read-JsonFile {
     }
 }
 
-$script:currentLanguage = 'zh'
+$script:currentLanguage = 'ar'
 if (Test-Path -LiteralPath $uiLangPath) {
     try {
         $savedLangRecord = Read-JsonFile $uiLangPath
-        if ($savedLangRecord -and $savedLangRecord.language -eq 'en') {
-            $script:currentLanguage = 'en'
+        if ($savedLangRecord -and [string]$savedLangRecord.language -in @('ar', 'en', 'zh')) {
+            $script:currentLanguage = [string]$savedLangRecord.language
         }
     } catch { }
 }
@@ -165,6 +165,103 @@ $script:i18n = @{
     'config_read_err'         = @{ zh = '无法读取自动重试设置。'; en = 'Cannot read auto-retry settings.' }
 }
 
+$script:i18nArabic = @{
+    'form_title' = 'إعدادات Codex Auto Retry'
+    'lang_button' = 'English'
+    'status_group' = 'الحالة الحالية'
+    'status_loading' = 'جارٍ القراءة…'
+    'status_not_running' = 'الخدمة متوقفة'
+    'status_disconnected' = 'Codex غير متصل'
+    'status_disconnected_hint' = 'الخادم المشترك يعمل؛ أعد تشغيل Codex عبر التشغيل الآمن.'
+    'startup_approval_enabled' = 'التشغيل مع Windows مفعّل'
+    'startup_approval_disabled' = 'التشغيل مع Windows معطّل'
+    'startup_approval_unknown' = 'حالة التشغيل مع Windows غير معروفة'
+    'status_exited' = 'Codex مغلق؛ توقفت المحاولات'
+    'status_shared_temp_unavail' = 'الخادم المشترك غير متاح مؤقتاً'
+    'status_shared_disabled' = 'الخادم المشترك متوقف'
+    'status_port_reserved' = 'المنفذ محجوز من Windows؛ لم تبدأ المحاولة'
+    'status_port_conflict' = 'المنفذ المفضل غير متاح؛ سيُختار منفذ آمن'
+    'status_migration_deferred' = 'بانتظار إغلاق Codex لإكمال النقل'
+    'status_config_invalid' = 'الإعداد غير متوافق؛ تم الرجوع للخادم الرسمي'
+    'status_paused' = 'متوقف مؤقتاً'
+    'status_running' = 'يعمل'
+    'queue_summary' = 'الانتظار: {0} / يعمل: {1} / متوقف: {2}'
+    'next_waiting_service' = 'المحاولة التالية: بانتظار الخدمة'
+    'next_waiting_resume' = 'المحاولة التالية: بانتظار الاستئناف'
+    'next_seconds' = 'المحاولة التالية خلال {0} ث'
+    'next_running' = 'المحاولة التالية: قيد التنفيذ'
+    'next_none' = 'المحاولة التالية: --'
+    'last_scan' = 'آخر فحص: '
+    'queue_group' = 'قائمة المهام (لا تتم قراءة محتوى المحادثات)'
+    'col_task' = 'المهمة'
+    'col_status' = 'الحالة'
+    'col_countdown' = 'العد التنازلي'
+    'col_recovery' = 'التعافي'
+    'col_consecutive' = 'المتتالية'
+    'col_class' = 'نوع العطل'
+    'btn_retry_now' = 'حاول الآن'
+    'btn_cancel_retry' = 'إلغاء الانتظار'
+    'btn_restart_retry' = 'إعادة البدء'
+    'btn_safe_launch' = 'تشغيل Codex بأمان'
+    'safe_launch_running' = 'بانتظار إغلاق Codex ثم تشغيله بالطريقة الآمنة…'
+    'safe_launch_done' = 'تم طلب التشغيل الآمن؛ ستُحدّث الحالة بعد قليل.'
+    'safe_launch_failed' = 'فشل التشغيل الآمن؛ تأكد من إغلاق Codex بالكامل.'
+    'safe_launch_missing' = 'ملف التشغيل الآمن مفقود؛ أعد تثبيت الإضافة.'
+    'safe_launch_disabled' = 'فعّل خادم Codex المشترك أولاً.'
+    'settings_group' = 'إعدادات الاستئناف التلقائي'
+    'check_enabled' = 'تفعيل الاستئناف التلقائي'
+    'check_shared' = 'تفعيل خادم Codex المشترك'
+    'shared_port_prefix' = 'المنفذ المشترك: '
+    'check_notifications' = 'إظهار إشعار عند بلوغ حد المحاولات'
+    'label_prompt' = 'نص المتابعة الاحتياطي'
+    'label_recovery' = 'حد التعافي من العطل'
+    'label_consecutive' = 'حد المحاولات دون تقدّم'
+    'label_auth_limit' = 'حد أخطاء تسجيل الدخول'
+    'label_memory' = 'حد الذاكرة (MB)'
+    'label_strategy' = 'استراتيجية الانتظار'
+    'strategy_exponential' = 'تضاعف تدريجي'
+    'strategy_linear' = 'زيادة ثابتة'
+    'strategy_fixed' = 'فاصل ثابت'
+    'label_initial_delay' = 'الانتظار الأولي (ث)'
+    'label_fixed_interval' = 'الفاصل الثابت (ث)'
+    'label_max_delay' = 'أقصى انتظار (ث)'
+    'label_increment' = 'الزيادة كل مرة (ث)'
+    'wait_seq_prefix' = 'تسلسل الانتظار: '
+    'unit_second' = ' ث'
+    'unit_minute' = ' د'
+    'unit_hour' = ' س'
+    'btn_save' = 'حفظ الإعدادات'
+    'btn_close' = 'إغلاق'
+    'busy_checking' = 'جارٍ الفحص…'
+    'busy_notice' = 'جارٍ التحقق من الإعدادات؛ يرجى الانتظار…'
+    'save_saved' = 'تم حفظ الإعدادات وستُطبق في الفحص التالي.'
+    'save_checking_health' = 'جارٍ فحص الخادم المشترك؛ سيبقى Codex على الخادم الحالي أثناء الفحص…'
+    'save_closing_shared' = 'جارٍ إيقاف الخادم المشترك والرجوع إلى الخادم الرسمي…'
+    'save_saving' = 'جارٍ حفظ الإعدادات…'
+    'save_timeout' = 'انتهت مهلة فحص الإعدادات ولم يتم حفظها.'
+    'save_validation_failed' = 'فشل التحقق من الإعدادات'
+    'save_fail_reserved' = 'فشل الحفظ: المنفذ {0} محجوز من Windows.'
+    'save_fail_conflict' = 'فشل الحفظ: المنفذ {0} مستخدم من برنامج آخر.'
+    'save_fail_timeout' = 'انتهت مهلة فحص الخادم المشترك؛ لم يتغير خادم Codex.'
+    'save_fail_health' = 'فشل الحفظ: لم ينجح فحص سلامة الخادم المشترك.'
+    'save_fail_close' = 'فشل الحفظ: تعذر إيقاف الخادم المشترك.'
+    'save_fail_range' = 'فشل الحفظ؛ تحقق من نطاقات القيم.'
+    'msg_prompt_empty' = 'نص المتابعة الاحتياطي لا يمكن أن يكون فارغاً.'
+    'msg_max_less_initial' = 'أقصى مدة انتظار لا يمكن أن تكون أقل من مدة الانتظار الأولية.'
+    'msg_action_failed' = 'لم تُنفذ العملية؛ ربما تغيرت حالة المهمة.'
+    'memory_guard_msg' = 'بلغت ذاكرة نافذة الإعدادات {0} MB وتجاوزت الحد {1} MB. ستُغلق النافذة من دون حذف بيانات مهام Codex.'
+    'memory_guard_title' = 'حماية ذاكرة Codex Auto Retry'
+    'layout_overlap_err' = 'يوجد تداخل في عناصر الإعدادات: '
+    'layout_bounds_err' = 'أحد حقول الإعدادات خارج المساحة المرئية.'
+    'config_read_err' = 'تعذر قراءة إعدادات الاستئناف التلقائي.'
+}
+foreach ($entry in $script:i18nArabic.GetEnumerator()) {
+    if ($script:i18n.ContainsKey($entry.Key)) {
+        $script:i18n[$entry.Key]['ar'] = [string]$entry.Value
+    }
+}
+$script:i18n['lang_button']['zh'] = 'العربية'
+
 function T($Key) {
     $item = $script:i18n[$Key]
     if ($item) {
@@ -172,6 +269,15 @@ function T($Key) {
         if ($val) { return $val }
     }
     return $Key
+}
+
+function L3 {
+    param([string]$Arabic, [string]$English, [string]$Chinese)
+    switch ($script:currentLanguage) {
+        'ar' { return $Arabic }
+        'en' { return $English }
+        default { return $Chinese }
+    }
 }
 
 function Stop-LocalCommandProcess {
@@ -351,7 +457,7 @@ $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
 $form.MinimizeBox = $false
 $form.ClientSize = [System.Drawing.Size]::new(620, 840)
-$form.Font = [System.Drawing.Font]::new('Microsoft YaHei UI', 9)
+$form.Font = [System.Drawing.Font]::new('Segoe UI', 9)
 $form.Icon = [System.Drawing.SystemIcons]::Application
 if ($SmokeTest) {
     $form.Opacity = 0
@@ -359,7 +465,7 @@ if ($SmokeTest) {
 }
 
 $title = New-Label 'Codex Auto Retry' 22 18 280 30
-$title.Font = [System.Drawing.Font]::new('Microsoft YaHei UI', 15, [System.Drawing.FontStyle]::Bold)
+$title.Font = [System.Drawing.Font]::new('Segoe UI', 15, [System.Drawing.FontStyle]::Bold)
 $form.Controls.Add($title)
 
 $versionText = ''
@@ -373,7 +479,7 @@ $langButton = [System.Windows.Forms.Button]::new()
 $langButton.Location = [System.Drawing.Point]::new(505, 18)
 $langButton.Size = [System.Drawing.Size]::new(95, 26)
 $langButton.Text = T 'lang_button'
-$langButton.Font = [System.Drawing.Font]::new('Microsoft YaHei UI', 8.5)
+$langButton.Font = [System.Drawing.Font]::new('Segoe UI', 8.5)
 $langButton.FlatStyle = 'Standard'
 $langButton.Cursor = [System.Windows.Forms.Cursors]::Hand
 $form.Controls.Add($langButton)
@@ -580,10 +686,10 @@ function Update-DelayPreview {
         if ($strategy -eq 'exponential') { $delay = [Math]::Min($delay * 2, $maximum) }
         if ($strategy -eq 'linear') { $delay = [Math]::Min($delay + $increment, $maximum) }
     }
-    $sep = if ($script:currentLanguage -eq 'en') { ', ' } else { '，' }
+    $sep = switch ($script:currentLanguage) { 'ar' { '، ' } 'en' { ', ' } default { '，' } }
     $suffix = ''
     if ([int]$consecutiveBox.Value -gt $count) {
-        $suffix = if ($script:currentLanguage -eq 'en') { ', ...' } else { '，…' }
+        $suffix = switch ($script:currentLanguage) { 'ar' { '، …' } 'en' { ', ...' } default { '，…' } }
     }
     $previewLabel.Text = (T 'wait_seq_prefix') + ($values -join $sep) + $suffix
     $maxDelayBox.Enabled = $strategy -ne 'fixed'
@@ -640,67 +746,47 @@ function Set-SettingsBusy {
 
 function Get-StateText {
     param([string]$State)
-    $lang = $script:currentLanguage
     switch ($State) {
-        'pending'  { if ($lang -eq 'en') { return 'Pending' } else { return '等待中' } }
-        'starting' { if ($lang -eq 'en') { return 'Starting' } else { return '启动中' } }
-        'running'  { if ($lang -eq 'en') { return 'Running' } else { return '执行中' } }
-        'stopped'  { if ($lang -eq 'en') { return 'Limit Reached' } else { return '达到上限' } }
+        'pending'  { return L3 'بانتظار التنفيذ' 'Pending' '等待中' }
+        'starting' { return L3 'جارٍ البدء' 'Starting' '启动中' }
+        'running'  { return L3 'قيد التنفيذ' 'Running' '执行中' }
+        'stopped'  { return L3 'تم بلوغ الحد' 'Limit Reached' '达到上限' }
         default { return $State }
     }
 }
 
 function Get-StoppedStateText {
     param([string]$Reason)
-    $lang = $script:currentLanguage
-    if ($Reason -eq 'auth_attempt_limit') {
-        if ($lang -eq 'en') { return 'Auth Limit' } else { return '登录异常专用上限' }
-    }
-    if ($Reason -eq 'codex_not_running') {
-        if ($lang -eq 'en') { return 'Codex Exited' } else { return 'Codex 已退出' }
-    }
-    if ($Reason -eq 'shared_app_server_disabled') {
-        if ($lang -eq 'en') { return 'Shared Backend Disabled' } else { return '共享后台已关闭' }
-    }
-    if ($Reason -eq 'codex_restart_required') {
-        if ($lang -eq 'en') { return 'Codex Not Connected' } else { return 'Codex 未接入共享后台' }
-    }
-    if ($Reason -eq 'codex_home_not_shared') {
-        if ($lang -eq 'en') { return 'Task Dir Not Shared' } else { return '任务目录未接入' }
-    }
-    if ($Reason -eq 'shared_app_server_port_conflict') {
-        if ($lang -eq 'en') { return 'Port Conflict' } else { return '恢复端口冲突' }
-    }
-    if ($Reason -eq 'shared_app_server_port_reserved') {
-        if ($lang -eq 'en') { return 'Port Reserved by Windows' } else { return '端口被 Windows 保留' }
-    }
-    if ($Reason -eq 'shared_app_server_config_invalid') {
-        if ($lang -eq 'en') { return 'Config Incompatible; Reverted' } else { return '共享后台配置不兼容，已切回官方后台' }
+    switch ($Reason) {
+        'auth_attempt_limit' { return L3 'حد تسجيل الدخول' 'Auth Limit' '登录异常专用上限' }
+        'codex_not_running' { return L3 'Codex مغلق' 'Codex Exited' 'Codex 已退出' }
+        'shared_app_server_disabled' { return L3 'الخادم المشترك متوقف' 'Shared Backend Disabled' '共享后台已关闭' }
+        'codex_restart_required' { return L3 'Codex غير متصل' 'Codex Not Connected' 'Codex 未接入共享后台' }
+        'codex_home_not_shared' { return L3 'مجلد المهمة غير متصل' 'Task Dir Not Shared' '任务目录未接入' }
+        'shared_app_server_port_conflict' { return L3 'تعارض منفذ' 'Port Conflict' '恢复端口冲突' }
+        'shared_app_server_port_reserved' { return L3 'المنفذ محجوز' 'Port Reserved by Windows' '端口被 Windows 保留' }
+        'shared_app_server_config_invalid' { return L3 'إعداد غير متوافق' 'Config Incompatible; Reverted' '共享后台配置不兼容，已切回官方后台' }
+        'goal_empty_response_limit_block_failed' { return L3 'فشل إيقاف الهدف' 'Goal Stop Failed' '目标停止失败' }
+        'goal_empty_response_limit' { return L3 'توقف الهدف' 'Goal Stopped (Empty Replies)' '目标空回复已停止' }
     }
     if ($Reason -like 'controller_*' -or $Reason -like 'codex_background_*' -or $Reason -eq 'app_server_request_failed') {
-        if ($lang -eq 'en') { return 'Recovery Channel Failed' } else { return '恢复通道失败' }
+        return L3 'فشل قناة الاستئناف' 'Recovery Channel Failed' '恢复通道失败'
     }
-    if ($Reason -eq 'goal_empty_response_limit_block_failed') {
-        if ($lang -eq 'en') { return 'Goal Stop Failed' } else { return '目标停止失败' }
-    }
-    if ($Reason -eq 'goal_empty_response_limit') {
-        if ($lang -eq 'en') { return 'Goal Stopped (Empty Replies)' } else { return '目标空回复已停止' }
-    }
-    if ($lang -eq 'en') { return 'Limit Reached' } else { return '达到上限' }
+    return L3 'تم بلوغ الحد' 'Limit Reached' '达到上限'
 }
 
 function Get-ClassText {
     param([string]$Class)
-    $lang = $script:currentLanguage
     switch ($Class) {
-        'transient'      { if ($lang -eq 'en') { return 'Connection Dropped' } else { return '连接中断' } }
-        'rate_limit'     { if ($lang -eq 'en') { return 'Rate Limited' } else { return '请求限流' } }
-        'server'         { if ($lang -eq 'en') { return 'Provider Failure' } else { return '供应商故障' } }
-        'auth_transient' { if ($lang -eq 'en') { return 'Auth Service Error' } else { return '登录服务异常' } }
-        'auth_limited'   { if ($lang -eq 'en') { return 'Auth Error' } else { return '登录异常' } }
-        'empty_response' { if ($lang -eq 'en') { return 'Empty Model Reply' } else { return '模型空回复' } }
-        'unknown'        { if ($lang -eq 'en') { return 'Unknown Fault' } else { return '未知故障' } }
-        default          { if ($lang -eq 'en') { return 'Unclassified' } else { return '未分类' } }
+        'transient'      { return L3 'انقطاع الاتصال' 'Connection Dropped' '连接中断' }
+        'rate_limit'     { return L3 'تقييد الطلبات' 'Rate Limited' '请求限流' }
+        'usage_limit'    { return L3 'حد استخدام Codex' 'Usage Limit' '使用上限' }
+        'server'         { return L3 'عطل لدى المزود' 'Provider Failure' '供应商故障' }
+        'auth_transient' { return L3 'خلل مؤقت في تسجيل الدخول' 'Auth Service Error' '登录服务异常' }
+        'auth_limited'   { return L3 'خطأ تسجيل دخول' 'Auth Error' '登录异常' }
+        'empty_response' { return L3 'استجابة فارغة' 'Empty Model Reply' '模型空回复' }
+        'unknown'        { return L3 'عطل غير معروف' 'Unknown Fault' '未知故障' }
+        default          { return L3 'غير مصنّف' 'Unclassified' '未分类' }
     }
 }
 
@@ -897,6 +983,17 @@ function Invoke-TaskAction {
 }
 
 function Apply-Language {
+    $isArabic = $script:currentLanguage -eq 'ar'
+    $direction = if ($isArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
+    $form.RightToLeft = $direction
+    $form.RightToLeftLayout = $isArabic
+    $taskList.RightToLeft = $direction
+    if ($taskList.PSObject.Properties['RightToLeftLayout']) { $taskList.RightToLeftLayout = $isArabic }
+    $promptBox.RightToLeft = $direction
+    foreach ($numeric in @($recoveryBox, $consecutiveBox, $authBox, $memoryBox, $initialDelayBox, $maxDelayBox, $incrementBox)) {
+        $numeric.RightToLeft = [System.Windows.Forms.RightToLeft]::No
+    }
+    $versionLabel.RightToLeft = [System.Windows.Forms.RightToLeft]::No
     $form.Text = T 'form_title'
     $langButton.Text = T 'lang_button'
     $statusGroup.Text = T 'status_group'
@@ -944,7 +1041,11 @@ function Apply-Language {
 }
 
 $langButton.add_Click({
-    $script:currentLanguage = if ($script:currentLanguage -eq 'zh') { 'en' } else { 'zh' }
+    $script:currentLanguage = switch ($script:currentLanguage) {
+        'ar' { 'en' }
+        'en' { 'zh' }
+        default { 'ar' }
+    }
     try {
         $langConfig = [ordered]@{ language = $script:currentLanguage }
         [System.IO.File]::WriteAllText($uiLangPath, ($langConfig | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))
