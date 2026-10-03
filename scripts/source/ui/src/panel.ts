@@ -291,7 +291,7 @@ function renderService(next: ManagementSnapshot): void {
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_port_conflict") {
     label = "جارٍ نقل منفذ الخادم المشترك";
-    detail = `المنفذ المفضل غير متاح؛ سيتم اختيار منفذ محلي آمن عند تفعيل الخادم المشترك（当前配置 ${next.shared_app_server_port}）`;
+    detail = `المنفذ المفضل غير متاح؛ سيتم اختيار منفذ محلي آمن عند تفعيل الخادم المشترك (الإعداد الحالي: ${next.shared_app_server_port})`;
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_migration_deferred") {
     label = "بانتظار إغلاق Codex";
