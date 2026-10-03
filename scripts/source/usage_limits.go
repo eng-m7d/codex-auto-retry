@@ -115,7 +115,7 @@ func readCodexUsageSnapshot(ctx context.Context, codexHome string, now time.Time
 	}
 	command := exec.CommandContext(ctx, executable, "app-server")\n\tprepareUsageCommand(command)
 	if strings.TrimSpace(codexHome) != "" {
-		command.Env = replaceEnvironmentValue(os.Environ(), "CODEX_HOME", codexHome)
+		command.Env = replaceUsageEnvironmentValue(os.Environ(), "CODEX_HOME", codexHome)
 	}
 	stdin, err := command.StdinPipe()
 	if err != nil {
@@ -313,4 +313,16 @@ func findUsageCodexExecutable() (string, error) {
 		}
 	}
 	return "", errors.New("Codex executable was not found")
+}
+
+func replaceUsageEnvironmentValue(environment []string, key, value string) []string {
+	prefix := strings.ToLower(key) + "="
+	result := make([]string, 0, len(environment)+1)
+	for _, item := range environment {
+		if strings.HasPrefix(strings.ToLower(item), prefix) {
+			continue
+		}
+		result = append(result, item)
+	}
+	return append(result, key+"="+value)
 }
