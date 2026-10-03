@@ -280,7 +280,7 @@ const (
 
 func (c Config) retrySafetyWarning() string {
 	if c.MaxRecoveryAttempts > recommendedMaxRecoveryAttempts || c.MaxConsecutiveRetries > recommendedMaxConsecutiveRetries {
-		return fmt.Sprintf("重试上限偏激进（本次故障 %d 次、连续无进展 %d 次），建议不超过 %d/%d", c.MaxRecoveryAttempts, c.MaxConsecutiveRetries, recommendedMaxRecoveryAttempts, recommendedMaxConsecutiveRetries)
+		return fmt.Sprintf("حدود المحاولات مرتفعة (التعافي من العطل %d، والمحاولات المتتالية دون تقدّم %d). يُنصح بألا تتجاوز %d/%d", c.MaxRecoveryAttempts, c.MaxConsecutiveRetries, recommendedMaxRecoveryAttempts, recommendedMaxConsecutiveRetries)
 	}
 	return ""
 }

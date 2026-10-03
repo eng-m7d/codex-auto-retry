@@ -20,6 +20,7 @@ import "./panel.css";
 type FailureClass =
   | "transient"
   | "rate_limit"
+  | "usage_limit"
   | "server"
   | "auth_transient"
   | "auth_limited"
@@ -84,6 +85,23 @@ type ManagementSnapshot = {
   last_error?: string;
   notice?: string;
   retries: ManagedRetry[];
+  usage?: CodexUsageSnapshot;
+};
+
+type UsageWindow = {
+  used_percent: number;
+  remaining_percent: number;
+  window_minutes?: number;
+  resets_at?: string;
+};
+
+type CodexUsageSnapshot = {
+  available: boolean;
+  source?: string;
+  fetched_at?: string;
+  error?: string;
+  five_hour?: UsageWindow;
+  weekly?: UsageWindow;
 };
 
 type ToolResult = {
@@ -101,6 +119,15 @@ const elements = {
   refreshButton: required<HTMLButtonElement>("refresh-button"),
   notice: required<HTMLElement>("notice"),
   queueCount: required<HTMLElement>("queue-count"),
+  usageStatus: required<HTMLElement>("usage-status"),
+  usageFiveHourPercent: required<HTMLElement>("usage-five-hour-percent"),
+  usageFiveHourRemaining: required<HTMLElement>("usage-five-hour-remaining"),
+  usageFiveHourReset: required<HTMLElement>("usage-five-hour-reset"),
+  usageFiveHourBar: required<HTMLElement>("usage-five-hour-bar"),
+  usageWeeklyPercent: required<HTMLElement>("usage-weekly-percent"),
+  usageWeeklyRemaining: required<HTMLElement>("usage-weekly-remaining"),
+  usageWeeklyReset: required<HTMLElement>("usage-weekly-reset"),
+  usageWeeklyBar: required<HTMLElement>("usage-weekly-bar"),
   nextRetry: required<HTMLElement>("next-retry"),
   queueSummary: required<HTMLElement>("queue-summary"),
   queueList: required<HTMLElement>("queue-list"),
@@ -137,6 +164,20 @@ let savedSettings = "";
 let busyCount = 0;
 let noticeTimer = 0;
 let statusPollInFlight = false;
+
+const numberFormatter = new Intl.NumberFormat("ar-IQ", { maximumFractionDigits: 0 });
+const dateTimeFormatter = new Intl.DateTimeFormat("ar-IQ", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const timeFormatter = new Intl.DateTimeFormat("ar-IQ", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
 
 function required<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -199,19 +240,20 @@ function render(next: ManagementSnapshot): void {
   elements.pauseToggle.checked = !next.paused;
   elements.sharedAppServerToggle.checked = next.shared_app_server_requested ?? next.shared_app_server_enabled;
   elements.sharedAppServerDescription.textContent = next.shared_app_server_enabled
-    ? `正在使用插件拥有且已通过健康检查的后台（端口 ${next.shared_app_server_port}）`
-    : next.shared_app_server_requested ? "共享后台暂不可用，启用偏好已保留；安全启动入口会尝试恢复" : "默认关闭，不影响 Codex 官方后台";
-  elements.sharedAppServerPort.textContent = next.shared_app_server_port > 0 ? `端口 ${next.shared_app_server_port}` : "";
+    ? `يُستخدم الخادم المشترك الذي يملكه الملحق وتم التحقق من سلامته(المنفذ ${next.shared_app_server_port})`
+    : next.shared_app_server_requested ? "الخادم المشترك غير متاح مؤقتاً؛ تم الاحتفاظ بخيار التفعيل وستتم محاولة استعادته عند التشغيل الآمن" : "متوقف افتراضياً ولا يؤثر في خادم Codex الرسمي";
+  elements.sharedAppServerPort.textContent = next.shared_app_server_port > 0 ? `المنفذ ${next.shared_app_server_port}` : "";
   const startupApprovalLabels: Record<ManagementSnapshot["startup_approved"], string> = {
-    enabled: "Windows 登录启动：已启用",
-    disabled: "Windows 登录启动：已禁用",
-    unknown: "Windows 登录启动：状态未知",
+    enabled: "التشغيل مع تسجيل الدخول إلى Windows: مفعّل",
+    disabled: "التشغيل مع تسجيل الدخول إلى Windows: معطّل",
+    unknown: "التشغيل مع تسجيل الدخول إلى Windows: الحالة غير معروفة",
   };
   elements.startupApprovalStatus.textContent = startupApprovalLabels[next.startup_approved] ?? startupApprovalLabels.unknown;
   elements.startupApprovalStatus.dataset.state = next.startup_approved;
   updatePromptState();
   renderService(next);
   renderMetrics(next);
+  renderUsage(next);
   renderQueue(next);
   renderScanTime(next);
   if (next.notice) showNotice(next.notice, false);
@@ -221,67 +263,67 @@ function render(next: ManagementSnapshot): void {
 function renderService(next: ManagementSnapshot): void {
   const dot = document.createElement("span");
   dot.className = "status-dot";
-  let label = "未运行";
-  let detail = "未检测到有效心跳";
+  let label = "متوقف";
+  let detail = "لم يتم اكتشاف نبضة تشغيل حديثة";
   if (next.controller_state === "memory_limit_exceeded") {
-    label = "内存保护已停止";
-    detail = `后台内存 ${next.memory_usage_mb ?? 0} MB，已超过上限 ${next.memory_limit_mb} MB`;
+    label = "أوقفت حماية الذاكرة الخدمة";
+    detail = `استهلاك ذاكرة الخلفية ${next.memory_usage_mb ?? 0} MB وتجاوز الحد ${next.memory_limit_mb} MB`;
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "codex_restart_required") {
-    label = "Codex 未接入共享后台";
-    detail = "共享后台已启动，但当前 Codex 仍使用官方后台；请使用安全启动 Codex 入口";
+    label = "Codex غير متصل بالخادم المشترك";
+    detail = "الخادم المشترك يعمل، لكن Codex الحالي ما زال يستخدم الخادم الرسمي؛ أعد فتحه عبر التشغيل الآمن";
     dot.classList.add("status-dot-warning");
   } else if (next.running && next.controller_state === "official_ipc_ready") {
-    label = "Codex 已接入官方恢复通道";
-    detail = "新版 Codex 使用官方 IPC，自动恢复请求会转交当前任务所有者";
+    label = "Codex متصل بقناة الاستئناف الرسمية";
+    detail = "يستخدم Codex قناة IPC الرسمية، وتُرسل طلبات الاستئناف إلى مالك المهمة الحالية";
     dot.classList.add("status-dot-positive");
   } else if (next.running && next.controller_state === "codex_not_running") {
-    label = "Codex 已退出";
-    detail = "相关任务已停止自动重试；启动 Codex 后可手动重新开始";
+    label = "Codex مغلق";
+    detail = "توقفت محاولات الاستئناف لهذه المهام؛ بعد تشغيل Codex يمكن إعادة تشغيلها يدوياً";
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_disabled") {
-    label = next.shared_app_server_requested ? "共享后台暂不可用" : "共享后台已关闭";
-    detail = "Codex 继续使用官方后台；打开共享后台后才会执行静默恢复";
+    label = next.shared_app_server_requested ? "الخادم المشترك غير متاح مؤقتاً" : "الخادم المشترك متوقف";
+    detail = "يواصل Codex استخدام الخادم الرسمي؛ الاستئناف الصامت يحتاج إلى تفعيل الخادم المشترك";
     dot.classList.add("status-dot-warning");
   } else if (next.running && next.controller_state === "shared_app_server_port_reserved") {
-    label = "端口被 Windows 保留";
-    detail = "共享后台未启动，自动重试已停止；更换端口后再启用共享后台";
+    label = "المنفذ محجوز من Windows";
+    detail = "لم يبدأ الخادم المشترك وتوقفت المحاولات التلقائية؛ غيّر المنفذ ثم أعد التفعيل";
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_port_conflict") {
-    label = "共享端口正在迁移";
-    detail = `首选端口不可用；启用共享后台时会选择安全的本机端口（当前配置 ${next.shared_app_server_port}）`;
+    label = "جارٍ نقل منفذ الخادم المشترك";
+    detail = `المنفذ المفضل غير متاح؛ سيتم اختيار منفذ محلي آمن عند تفعيل الخادم المشترك (الإعداد الحالي: ${next.shared_app_server_port})`;
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_migration_deferred") {
-    label = "等待 Codex 关闭";
-    detail = "共享后台清理或迁移已延后，避免中断当前 Codex 会话";
+    label = "بانتظار إغلاق Codex";
+    detail = "تم تأجيل تنظيف أو نقل الخادم المشترك لتجنب قطع جلسة Codex الحالية";
     dot.classList.add("status-dot-warning");
   } else if (next.running && next.controller_state === "shared_app_server_environment_conflict") {
-    label = "共享后台环境冲突";
-    detail = "检测到 CODEX_APP_SERVER_WS_URL 已指向其他地址，插件未覆盖；请清理冲突值后再启用共享后台";
+    label = "تعارض في بيئة الخادم المشترك";
+    detail = "المتغير CODEX_APP_SERVER_WS_URL يشير إلى عنوان آخر؛ لم يغيّره الملحق. أزل القيمة المتعارضة ثم أعد التفعيل";
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_ownership_unknown") {
-    label = "共享后台归属未知";
-    detail = "插件无法确认后台进程归属，已停止自动清理；请先关闭 Codex 并人工核对后再恢复共享后台";
+    label = "ملكية الخادم المشترك غير مؤكدة";
+    detail = "تعذر التحقق من ملكية عملية الخلفية، لذلك توقف التنظيف التلقائي؛ أغلق Codex وتحقق منها قبل إعادة التفعيل";
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_config_invalid") {
-    label = "共享后台配置不兼容";
-    detail = "已自动切回 Codex 官方后台，避免错误配置继续影响对话";
+    label = "إعداد الخادم المشترك غير متوافق";
+    detail = "تم الرجوع تلقائياً إلى خادم Codex الرسمي لمنع الإعداد غير المتوافق من التأثير في الجلسة";
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_memory_limit_exceeded") {
-    label = "共享后台内存保护";
-    detail = `共享后台已停止接管（${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB），未强制关闭 Codex`;
+    label = "حماية ذاكرة الخادم المشترك";
+    detail = `توقف الخادم المشترك عن التحكم(${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB) من دون إجبار Codex على الإغلاق`;
     dot.classList.add("status-dot-warning");
   } else if (next.running && next.controller_state && !["ready", "starting", "official_ipc_ready"].includes(next.controller_state)) {
-    label = "恢复通道异常";
-    detail = `自动重试已停止继续空转：${controllerStateLabel(next.controller_state)}`;
+    label = "خلل في قناة الاستئناف";
+    detail = `توقفت المحاولات التلقائية لتجنب التكرار غير المفيد: ${controllerStateLabel(next.controller_state)}`;
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.paused) {
-    label = "已暂停";
-    detail = "监控保持运行，新重试暂不执行";
+    label = "متوقف مؤقتاً";
+    detail = "المراقبة مستمرة، لكن لن تبدأ محاولات جديدة حالياً";
     dot.classList.add("status-dot-warning");
   } else if (next.running) {
-    label = "运行中";
-    detail = `正在监控 ${next.watched_roots} 个会话位置`;
+    label = "يعمل";
+    detail = `تتم مراقبة ${next.watched_roots} مواقع للجلسات`;
     dot.classList.add("status-dot-positive");
   } else {
     dot.classList.add("status-dot-danger");
@@ -289,18 +331,18 @@ function renderService(next: ManagementSnapshot): void {
   elements.serviceStatus.replaceChildren(dot, document.createTextNode(label));
   elements.serviceLine.textContent = detail;
   if (next.running && next.automatic_recovery_supported === false && next.recovery_capability_reason === "official_stdio_not_externally_controllable") {
-    elements.serviceLine.textContent = `${detail}；当前为只监控模式，尚未发送自动恢复请求`;
+    elements.serviceLine.textContent = `${detail}؛ الوضع الحالي للمراقبة فقط ولم يُرسل طلب استئناف تلقائي`;
   }
   if (next.memory_guard_triggered) {
-    elements.serviceLine.textContent = `${detail}；内存保护已触发（${next.memory_usage_mb ?? 0} MB/${next.memory_limit_mb} MB）`;
+    elements.serviceLine.textContent = `${detail}؛ تم تشغيل حماية الذاكرة(${next.memory_usage_mb ?? 0} MB/${next.memory_limit_mb} MB)`;
   }
   if (next.shared_app_server_memory_guard_triggered) {
-    elements.serviceLine.textContent = `${elements.serviceLine.textContent}；共享后台内存保护已触发（${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB），未强制关闭 Codex`;
+    elements.serviceLine.textContent = `${elements.serviceLine.textContent}؛ تم تشغيل حماية ذاكرة الخادم المشترك(${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB) من دون إجبار Codex على الإغلاق`;
   }
   if (next.retry_safety_warning) {
-    elements.serviceLine.textContent = `${elements.serviceLine.textContent}；${next.retry_safety_warning}`;
+    elements.serviceLine.textContent = `${elements.serviceLine.textContent}؛${next.retry_safety_warning}`;
   }
-  elements.pauseDescription.textContent = next.paused ? "已暂停新重试" : "运行中";
+  elements.pauseDescription.textContent = next.paused ? "المحاولات الجديدة متوقفة مؤقتاً" : "يعمل";
 }
 
 function renderMetrics(next: ManagementSnapshot): void {
@@ -310,22 +352,69 @@ function renderMetrics(next: ManagementSnapshot): void {
     .filter((retry) => retry.state === "pending" && retry.due_at)
     .sort((a, b) => Date.parse(a.due_at ?? "") - Date.parse(b.due_at ?? ""));
   if (next.paused && pending.length > 0) {
-    elements.nextRetry.textContent = "等待恢复";
+    elements.nextRetry.textContent = "بانتظار الاستئناف";
   } else if (pending.length > 0) {
     elements.nextRetry.dataset.dueAt = pending[0].due_at ?? "";
     updateCountdownElement(elements.nextRetry);
   } else if (next.active_retries > 0) {
-    elements.nextRetry.textContent = "正在重试";
+    elements.nextRetry.textContent = "جارٍ الاستئناف";
     delete elements.nextRetry.dataset.dueAt;
   } else {
     elements.nextRetry.textContent = "--";
     delete elements.nextRetry.dataset.dueAt;
   }
   if (total === 0) {
-    elements.queueSummary.textContent = "当前没有等待中的任务";
+    elements.queueSummary.textContent = "لا توجد مهام بانتظار الاستئناف حالياً";
   } else {
-    elements.queueSummary.textContent = `${next.pending_retries} 个等待中，${next.active_retries} 个执行中，${next.stopped_retries} 个已停止`;
+    elements.queueSummary.textContent = `${next.pending_retries} بانتظار التنفيذ، و${next.active_retries} قيد التنفيذ، و${next.stopped_retries} متوقفة`;
   }
+}
+
+function renderUsage(next: ManagementSnapshot): void {
+  const usage = next.usage;
+  if (!usage?.available) {
+    elements.usageStatus.textContent = usage?.error ? "تعذر قراءة بيانات الاستخدام" : "بانتظار بيانات الاستخدام";
+    renderUsageWindow(undefined, elements.usageFiveHourPercent, elements.usageFiveHourRemaining, elements.usageFiveHourReset, elements.usageFiveHourBar);
+    renderUsageWindow(undefined, elements.usageWeeklyPercent, elements.usageWeeklyRemaining, elements.usageWeeklyReset, elements.usageWeeklyBar);
+    return;
+  }
+  elements.usageStatus.textContent = usage.fetched_at
+    ? `آخر تحديث: ${timeFormatter.format(new Date(usage.fetched_at))}`
+    : "محدّث الآن";
+  renderUsageWindow(usage.five_hour, elements.usageFiveHourPercent, elements.usageFiveHourRemaining, elements.usageFiveHourReset, elements.usageFiveHourBar);
+  renderUsageWindow(usage.weekly, elements.usageWeeklyPercent, elements.usageWeeklyRemaining, elements.usageWeeklyReset, elements.usageWeeklyBar);
+}
+
+function renderUsageWindow(
+  value: UsageWindow | undefined,
+  percentElement: HTMLElement,
+  remainingElement: HTMLElement,
+  resetElement: HTMLElement,
+  barElement: HTMLElement,
+): void {
+  const progress = barElement.parentElement;
+  if (!value) {
+    percentElement.textContent = "--";
+    remainingElement.textContent = "المتبقي --";
+    resetElement.textContent = "--";
+    barElement.style.width = "0%";
+    progress?.setAttribute("aria-valuenow", "0");
+    if (progress) delete progress.dataset.level;
+    return;
+  }
+
+  const used = Math.min(100, Math.max(0, value.used_percent));
+  const remaining = Math.min(100, Math.max(0, value.remaining_percent));
+  percentElement.textContent = `${numberFormatter.format(used)}٪`;
+  remainingElement.textContent = `المتبقي ${numberFormatter.format(remaining)}٪`;
+  barElement.style.width = `${used}%`;
+  progress?.setAttribute("aria-valuenow", String(Math.round(used)));
+  if (progress) {
+    progress.dataset.level = used >= 90 ? "danger" : used >= 70 ? "warning" : "normal";
+  }
+  resetElement.textContent = value.resets_at
+    ? dateTimeFormatter.format(new Date(value.resets_at))
+    : "--";
 }
 
 function renderQueue(next: ManagementSnapshot): void {
@@ -333,7 +422,7 @@ function renderQueue(next: ManagementSnapshot): void {
   if (next.retries.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.append(icon("activity"), document.createTextNode("队列为空"));
+    empty.append(icon("activity"), document.createTextNode("قائمة الانتظار فارغة"));
     elements.queueList.append(empty);
     return;
   }
@@ -361,13 +450,13 @@ function createQueueItem(retry: ManagedRetry, paused: boolean): HTMLElement {
   const meta = document.createElement("div");
   meta.className = "queue-meta";
   const recovery = retry.max_recovery_attempts
-    ? `本次故障恢复 ${retry.recovery_attempt}/${retry.max_recovery_attempts}`
-    : `本次故障恢复 ${retry.recovery_attempt}`;
+    ? `محاولات التعافي من العطل ${retry.recovery_attempt}/${retry.max_recovery_attempts}`
+    : `محاولات التعافي من العطل ${retry.recovery_attempt}`;
   const consecutive = retry.max_consecutive_retries
-    ? `连续无进展 ${retry.consecutive_retry}/${retry.max_consecutive_retries}`
-    : `连续无进展 ${retry.consecutive_retry}`;
+    ? `محاولات متتالية دون تقدّم ${retry.consecutive_retry}/${retry.max_consecutive_retries}`
+    : `محاولات متتالية دون تقدّم ${retry.consecutive_retry}`;
   const stateLabel = retry.state === "pending"
-    ? "等待中"
+    ? "بانتظار التنفيذ"
     : retry.state === "stopped"
       ? stoppedStateLabel(retry)
       : actionLabel(retry.action);
@@ -387,12 +476,12 @@ function createQueueItem(retry: ManagedRetry, paused: boolean): HTMLElement {
   if (retry.state === "pending" && retry.due_at) {
     primary.dataset.dueAt = retry.due_at;
     updateCountdownElement(primary);
-    secondary.textContent = paused ? "恢复后执行" : "后重试";
+    secondary.textContent = paused ? "ستُنفذ بعد استئناف الخدمة" : "حتى المحاولة التالية";
   } else if (retry.state === "stopped") {
-    primary.textContent = "已停止";
+    primary.textContent = "متوقفة";
     secondary.textContent = stopReasonLabel(retry);
   } else {
-    primary.textContent = retry.state === "running" ? "执行中" : "启动中";
+    primary.textContent = retry.state === "running" ? "قيد التنفيذ" : "جارٍ البدء";
     secondary.textContent = actionLabel(retry.action);
   }
   state.append(primary, secondary);
@@ -400,13 +489,13 @@ function createQueueItem(retry: ManagedRetry, paused: boolean): HTMLElement {
   const actions = document.createElement("div");
   actions.className = "queue-actions";
   if (retry.can_retry_now) {
-    actions.append(actionButton("play", "立即重试", "retry-action", () => runThreadAction("retry_now", retry.thread_id)));
+    actions.append(actionButton("play", "حاول الآن", "retry-action", () => runThreadAction("retry_now", retry.thread_id)));
   }
   if (retry.can_cancel) {
-    actions.append(actionButton("x", "取消这次重试", "cancel-action", () => runThreadAction("cancel_retry", retry.thread_id)));
+    actions.append(actionButton("x", "إلغاء هذه المحاولة", "cancel-action", () => runThreadAction("cancel_retry", retry.thread_id)));
   }
   if (retry.can_restart) {
-    actions.append(actionButton("rotate-ccw", "重新开始计数并重试", "retry-action", () => runThreadAction("restart_retry", retry.thread_id)));
+    actions.append(actionButton("rotate-ccw", "إعادة ضبط العداد والمحاولة", "retry-action", () => runThreadAction("restart_retry", retry.thread_id)));
   }
   row.append(main, state, actions);
   return row;
@@ -442,7 +531,7 @@ function renderScanTime(next: ManagementSnapshot): void {
     return;
   }
   const date = new Date(next.last_scan_at);
-  elements.scanTime.textContent = `扫描于 ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+  elements.scanTime.textContent = `آخر فحص: ${timeFormatter.format(date)}`;
 }
 
 function updateCountdowns(): void {
@@ -459,148 +548,151 @@ function updateCountdownElement(element: HTMLElement): void {
 }
 
 function formatDuration(totalSeconds: number): string {
-  if (totalSeconds < 60) return `${totalSeconds} 秒`;
+  if (totalSeconds < 60) return `${numberFormatter.format(totalSeconds)} ث`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  if (minutes < 60) return `${minutes} 分 ${String(seconds).padStart(2, "0")} 秒`;
+  if (minutes < 60) {
+    return `${numberFormatter.format(minutes)} د ${numberFormatter.format(seconds)} ث`;
+  }
   const hours = Math.floor(minutes / 60);
-  return `${hours} 时 ${String(minutes % 60).padStart(2, "0")} 分`;
+  return `${numberFormatter.format(hours)} س ${numberFormatter.format(minutes % 60)} د`;
 }
 
 function classLabel(value: FailureClass): string {
   const labels: Record<FailureClass, string> = {
-    transient: "连接中断",
-    rate_limit: "请求限流",
-    server: "供应商故障",
-    auth_transient: "登录服务暂不可用",
-    auth_limited: "登录异常",
-    empty_response: "模型空回复",
-    unknown: "未知故障",
-    none: "未分类",
+    transient: "انقطاع في الاتصال",
+    rate_limit: "تقييد مؤقت للطلبات",
+    usage_limit: "تم بلوغ حد استخدام Codex",
+    server: "عطل لدى مزود الخدمة",
+    auth_transient: "خدمة تسجيل الدخول غير متاحة مؤقتاً",
+    auth_limited: "خطأ في تسجيل الدخول",
+    empty_response: "استجابة فارغة من النموذج",
+    unknown: "عطل غير معروف",
+    none: "غير مصنّف",
   };
-  return labels[value] ?? "未知故障";
+  return labels[value] ?? "عطل غير معروف";
 }
 
 function actionLabel(value?: string): string {
   const labels: Record<string, string> = {
-    dispatching: "准备恢复",
-    goal_resume: "目标恢复",
-    goal_active: "目标运行",
-    conversation_continue: "对话继续",
-    subagent_continue: "子 Agent 恢复",
-    goal_block: "目标停止",
+    dispatching: "جارٍ تجهيز الاستئناف",
+    goal_resume: "استئناف الهدف",
+    goal_active: "الهدف قيد التشغيل",
+    conversation_continue: "متابعة المحادثة",
+    subagent_continue: "استئناف الوكيل الفرعي",
+    goal_block: "إيقاف الهدف",
   };
-  return value ? (labels[value] ?? "正在处理") : "正在处理";
+  return value ? (labels[value] ?? "جارٍ المعالجة") : "جارٍ المعالجة";
 }
 
 function stopReasonLabel(retry: ManagedRetry): string {
   if (retry.stop_reason === "auth_attempt_limit") {
-    return "触发登录异常专用上限";
+    return "تم بلوغ حد محاولات أخطاء تسجيل الدخول";
   }
   if (retry.stop_reason === "codex_not_running") {
-    return "Codex 已退出，自动重试已停止";
+    return "Codex مغلق؛ توقفت المحاولات التلقائية";
   }
   if (retry.stop_reason === "shared_app_server_disabled") {
-    return "共享后台模式已关闭，Codex 仍使用官方后台";
+    return "الخادم المشترك متوقف وCodex يستخدم الخادم الرسمي";
   }
   if (retry.stop_reason === "codex_restart_required") {
-    return "通过安全启动 Codex 入口重新打开后接入共享后台";
+    return "أعد فتح Codex عبر التشغيل الآمن للاتصال بالخادم المشترك";
   }
   if (retry.stop_reason === "codex_home_not_shared") {
-    return "此任务不在当前 Codex 的共享会话目录中";
+    return "هذه المهمة ليست ضمن مجلد الجلسات المشترك الحالي في Codex";
   }
   if (retry.stop_reason === "shared_app_server_port_conflict") {
-    return "首选恢复端口不可用，等待安全迁移";
+    return "منفذ الاستئناف المفضل غير متاح؛ بانتظار النقل الآمن";
   }
   if (retry.stop_reason === "shared_app_server_port_reserved") {
-    return "后台恢复端口被 Windows 保留";
+    return "منفذ الاستئناف الخلفي محجوز من Windows";
   }
   if (retry.stop_reason === "shared_app_server_environment_conflict") {
-    return "共享后台环境变量已被其他值占用";
+    return "متغير بيئة الخادم المشترك مستخدم بقيمة أخرى";
   }
   if (retry.stop_reason === "shared_app_server_ownership_unknown") {
-    return "共享后台归属无法确认，需人工清理";
+    return "تعذر تأكيد ملكية الخادم المشترك ويحتاج إلى تحقق يدوي";
   }
   if (retry.stop_reason === "shared_app_server_config_invalid") {
-    return "共享后台配置与当前 Codex 不兼容，已自动切回官方后台";
+    return "إعداد الخادم المشترك غير متوافق مع Codex الحالي؛ تم الرجوع إلى الخادم الرسمي";
   }
   if (retry.stop_reason === "shared_app_server_migration_deferred") {
-    return "等待 Codex 关闭后完成后台迁移";
+    return "بانتظار إغلاق Codex لإكمال نقل الخادم الخلفي";
   }
   if (retry.stop_reason?.startsWith("controller_") || retry.stop_reason?.startsWith("codex_background_") || retry.stop_reason === "app_server_request_failed") {
-    return "后台恢复通道连续失败，已停止空转";
+    return "فشلت قناة الاستئناف عدة مرات؛ تم إيقاف التكرار غير المفيد";
   }
   if (retry.stop_reason === "goal_empty_response_limit_block_failed") {
-    return `目标连续空回复达到上限，恢复已停止，但自动设为受阻失败`;
+    return `بلغ الهدف حد الاستجابات الفارغة؛ توقف الاستئناف وتم وضع الهدف في حالة محظورة`;
   }
   if (retry.stop_reason === "goal_empty_response_limit") {
-    return `目标连续空回复达到上限，目标恢复已停止`;
+    return `بلغ الهدف حد الاستجابات الفارغة؛ توقف استئناف الهدف`;
   }
   if (retry.stop_reason === "consecutive_retry_limit") {
-    return `无进展 ${retry.consecutive_retry}/${retry.max_consecutive_retries ?? retry.consecutive_retry} 达上限`;
+    return `دون تقدّم ${retry.consecutive_retry}/${retry.max_consecutive_retries ?? retry.consecutive_retry} بلغ الحد`;
   }
   if (retry.stop_reason === "recovery_time_limit") {
-    return "自动恢复运行时间达到 30 分钟上限";
+    return "بلغ الاستئناف التلقائي حد التشغيل البالغ 30 دقيقة";
   }
-  return `本次恢复 ${retry.recovery_attempt}/${retry.max_recovery_attempts ?? retry.recovery_attempt} 达上限`;
+  return `التعافي الحالي ${retry.recovery_attempt}/${retry.max_recovery_attempts ?? retry.recovery_attempt} بلغ الحد`;
 }
 
 function stoppedStateLabel(retry: ManagedRetry): string {
   switch (retry.stop_reason) {
     case "auth_attempt_limit":
-      return "登录异常专用上限";
+      return "حد أخطاء تسجيل الدخول";
     case "shared_app_server_disabled":
-      return "共享后台已关闭";
+      return "الخادم المشترك متوقف";
     case "codex_not_running":
-      return "Codex 已退出";
+      return "Codex مغلق";
     case "codex_restart_required":
-      return "等待安全启动 Codex";
+      return "بانتظار تشغيل Codex بالطريقة الآمنة";
     case "codex_ipc_goal_control_unsupported":
-      return "官方 IPC 暂不支持目标停止";
+      return "قناة IPC الرسمية لا تدعم إيقاف الهدف حالياً";
     case "subagent_recovery_event_unavailable":
-      return "子 Agent 恢复事件不可用";
+      return "حدث استئناف الوكيل الفرعي غير متاح";
     case "subagent_parent_owner_unavailable":
-      return "父任务所有者不可用";
+      return "مالك المهمة الأب غير متاح";
     case "subagent_parent_recovery_failed":
-      return "父任务恢复事件失败";
+      return "فشل إرسال حدث استئناف المهمة الأب";
     case "codex_home_not_shared":
-      return "任务目录未接入";
+      return "مجلد المهمة غير متصل";
     case "shared_app_server_port_conflict":
-      return "恢复端口冲突";
+      return "تعارض في منفذ الاستئناف";
     case "shared_app_server_port_reserved":
-      return "端口被 Windows 保留";
+      return "المنفذ محجوز من Windows";
     case "shared_app_server_environment_conflict":
-      return "共享后台环境冲突";
+      return "تعارض في بيئة الخادم المشترك";
     case "shared_app_server_ownership_unknown":
-      return "共享后台归属未知";
+      return "ملكية الخادم المشترك غير مؤكدة";
     case "shared_app_server_migration_deferred":
-      return "等待 Codex 关闭";
+      return "بانتظار إغلاق Codex";
     default:
-      return "达到上限";
+      return "تم بلوغ الحد";
   }
 }
 
 function controllerStateLabel(value: string): string {
   const labels: Record<string, string> = {
-    codex_restart_required: "需要安全启动 Codex",
-    official_ipc_ready: "新版 Codex 官方 IPC 已接入",
-    codex_ipc_goal_control_unsupported: "官方 IPC 暂不支持目标停止，恢复已停止",
-    subagent_recovery_event_unavailable: "无法确认子 Agent 的恢复事件",
-    subagent_parent_owner_unavailable: "无法确认父任务所有者",
-    subagent_parent_recovery_failed: "父任务恢复事件提交失败",
-    codex_not_running: "Codex 已退出，自动重试已停止",
-    shared_app_server_disabled: "共享后台模式已关闭，Codex 使用官方后台",
-    codex_home_not_shared: "任务目录未接入共享通道",
-    shared_app_server_port_conflict: "共享端口被占用",
-    shared_app_server_port_reserved: "共享端口被 Windows 保留",
-    shared_app_server_environment_conflict: "CODEX_APP_SERVER_WS_URL 已被其他值占用",
-    shared_app_server_ownership_unknown: "共享后台归属无法确认，需人工清理",
-    shared_app_server_migration_deferred: "等待 Codex 关闭后完成后台迁移",
-    shared_app_server_config_invalid: "共享后台配置与当前 Codex 不兼容，已切回官方后台",
-    codex_background_channel_unavailable: "共享通道不可用",
-    codex_background_dispatch_failed: "恢复请求失败",
-    controller_timeout: "恢复请求超时",
-    controller_unavailable: "控制器不可用",
+    codex_restart_required: "يلزم تشغيل Codex بالطريقة الآمنة",
+    official_ipc_ready: "تم الاتصال بقناة IPC الرسمية في Codex",
+    codex_ipc_goal_control_unsupported: "قناة IPC الرسمية لا تدعم إيقاف الهدف حالياً؛ توقف الاستئناف",
+    subagent_recovery_event_unavailable: "تعذر التحقق من حدث استئناف الوكيل الفرعي",
+    subagent_parent_owner_unavailable: "تعذر تحديد مالك المهمة الأب",
+    subagent_parent_recovery_failed: "فشل إرسال حدث استئناف المهمة الأب",
+    codex_not_running: "Codex مغلق؛ توقفت المحاولات التلقائية",
+    shared_app_server_disabled: "الخادم المشترك متوقف وCodex يستخدم الخادم الرسمي",
+    codex_home_not_shared: "مجلد المهمة غير متصل بالقناة المشتركة",
+    shared_app_server_port_conflict: "المنفذ المشترك مستخدم",
+    shared_app_server_port_reserved: "المنفذ المشترك محجوز من Windows",
+    shared_app_server_environment_conflict: "المتغير CODEX_APP_SERVER_WS_URL مستخدم بقيمة أخرى",
+    shared_app_server_ownership_unknown: "تعذر تأكيد ملكية الخادم المشترك ويحتاج إلى تحقق يدوي",
+    shared_app_server_migration_deferred: "بانتظار إغلاق Codex لإكمال نقل الخادم الخلفي",
+    shared_app_server_config_invalid: "إعداد الخادم المشترك غير متوافق مع Codex الحالي؛ تم الرجوع إلى الخادم الرسمي",
+    codex_background_channel_unavailable: "القناة المشتركة غير متاحة",
+    codex_background_dispatch_failed: "فشل طلب الاستئناف",
+    controller_timeout: "انتهت مهلة طلب الاستئناف",
+    controller_unavailable: "وحدة التحكم غير متاحة",
   };
   return labels[value] ?? value;
 }
@@ -610,8 +702,8 @@ function updatePromptState(): void {
   const count = Array.from(value).length;
   elements.promptCount.textContent = String(count);
   let error = "";
-  if (!value.trim()) error = "重试文字不能为空";
-  else if (count > 500) error = "最多 500 个字符";
+  if (!value.trim()) error = "نص المتابعة الاحتياطي لا يمكن أن يكون فارغاً";
+  else if (count > 500) error = "الحد الأقصى 500 حرف";
   elements.promptError.textContent = error;
   elements.savePrompt.disabled = Boolean(error) || value === savedPrompt || busyCount > 0;
   const strategy = selectedDelayStrategy();
@@ -624,24 +716,24 @@ function updatePromptState(): void {
   const memoryLimit = Number(elements.memoryLimit.value);
   let settingsError = "";
   if (!Number.isInteger(recoveryAttempts) || recoveryAttempts < 1 || recoveryAttempts > 1000) {
-    settingsError = "本次故障恢复上限应为 1 到 1000";
+    settingsError = "حد محاولات التعافي من العطل يجب أن يكون بين 1 و1000";
   } else if (!Number.isInteger(authAttempts) || authAttempts < 1 || authAttempts > 1000) {
-    settingsError = "登录异常恢复上限应为 1 到 1000";
+    settingsError = "حد محاولات أخطاء تسجيل الدخول يجب أن يكون بين 1 و1000";
   } else if (!Number.isInteger(consecutiveRetries) || consecutiveRetries < 1 || consecutiveRetries > 100) {
-    settingsError = "连续无进展重试上限应为 1 到 100";
+    settingsError = "حد المحاولات المتتالية دون تقدّم يجب أن يكون بين 1 و100";
   } else if (!Number.isInteger(memoryLimit) || memoryLimit < 128 || memoryLimit > 65536) {
-    settingsError = "内存上限应为 128 到 65536 MB";
+    settingsError = "حد الذاكرة يجب أن يكون بين 128 و65536 MB";
   } else if ((strategy !== "fixed" && strategy !== "linear" && strategy !== "exponential")
     || !Number.isInteger(initialDelay) || initialDelay < 1 || initialDelay > 3600
     || !Number.isInteger(maxDelay) || maxDelay < 1 || maxDelay > 86400
     || !Number.isInteger(delayIncrement) || delayIncrement < 1 || delayIncrement > 3600) {
-    settingsError = "等待时间设置超出范围";
+    settingsError = "إعداد مدة الانتظار خارج النطاق المسموح";
   } else if (strategy !== "fixed" && maxDelay < initialDelay) {
-    settingsError = "递增等待时，最大等待不能小于首次等待";
+    settingsError = "عند استخدام انتظار متزايد يجب ألا تكون المدة القصوى أقل من المدة الأولية";
   }
   elements.maxDelay.disabled = strategy === "fixed";
   elements.delayIncrement.disabled = strategy !== "linear";
-  elements.initialDelayLabel.textContent = strategy === "fixed" ? "固定间隔（秒）" : "首次等待（秒）";
+  elements.initialDelayLabel.textContent = strategy === "fixed" ? "الفاصل الثابت (ثانية)" : "الانتظار الأولي (ثانية)";
   elements.settingsError.textContent = settingsError;
   updateDelayPreview(strategy, initialDelay, maxDelay, delayIncrement, consecutiveRetries);
   elements.saveSettings.disabled = Boolean(error) || Boolean(settingsError)
@@ -705,15 +797,15 @@ function updateDelayPreview(
     if (strategy === "exponential") delay = Math.min(delay * 2, maxDelay);
     if (strategy === "linear") delay = Math.min(delay + delayIncrement, maxDelay);
   }
-  const suffix = consecutiveRetries > visibleCount ? "，…" : "";
-  elements.delayPreview.textContent = `等待序列：${delays.map(formatPreviewDelay).join("，")}${suffix}`;
+  const suffix = consecutiveRetries > visibleCount ? "، …" : "";
+  elements.delayPreview.textContent = `تسلسل الانتظار: ${delays.map(formatPreviewDelay).join("، ")}${suffix}`;
 }
 
 function formatPreviewDelay(seconds: number): string {
-  if (seconds < 60) return `${seconds} 秒`;
-  if (seconds % 3600 === 0) return `${seconds / 3600} 小时`;
-  if (seconds % 60 === 0) return `${seconds / 60} 分钟`;
-  return `${seconds} 秒`;
+  if (seconds < 60) return `${numberFormatter.format(seconds)} ث`;
+  if (seconds % 3600 === 0) return `${numberFormatter.format(seconds / 3600)} ساعة`;
+  if (seconds % 60 === 0) return `${numberFormatter.format(seconds / 60)} دقيقة`;
+  return `${numberFormatter.format(seconds)} ث`;
 }
 
 function setBusy(active: boolean): void {
@@ -731,7 +823,7 @@ function setBusy(active: boolean): void {
 
 async function callTool(name: string, args: Record<string, unknown> = {}, quiet = false): Promise<void> {
   if (!app) {
-    showNotice("管理面板尚未连接", true);
+    showNotice("لوحة الإدارة غير متصلة بعد", true);
     return;
   }
   if (quiet) {
@@ -744,7 +836,7 @@ async function callTool(name: string, args: Record<string, unknown> = {}, quiet 
     const result = (await app.callServerTool({ name, arguments: args })) as ToolResult;
     const next = extractSnapshot(result);
     if (next) render(next);
-    else if (result.isError) throw new Error(result.content?.find((item) => item.text)?.text ?? "操作失败");
+    else if (result.isError) throw new Error(result.content?.find((item) => item.text)?.text ?? "فشلت العملية");
   } catch (error) {
     if (name === "set_shared_app_server_enabled") {
       // A failed health check may still have persisted the user's preference.
@@ -756,7 +848,7 @@ async function callTool(name: string, args: Record<string, unknown> = {}, quiet 
     if (name === "set_shared_app_server_enabled" && snapshot) {
       elements.sharedAppServerToggle.checked = snapshot.shared_app_server_requested ?? snapshot.shared_app_server_enabled;
     }
-    if (!quiet) showNotice(error instanceof Error ? error.message : "操作失败", true);
+    if (!quiet) showNotice(error instanceof Error ? error.message : "فشلت العملية", true);
   } finally {
     if (quiet) {
       statusPollInFlight = false;
@@ -786,8 +878,8 @@ elements.pauseToggle.addEventListener("change", () => void callTool("set_auto_re
   elements.sharedAppServerToggle.addEventListener("change", () => {
   const enabled = elements.sharedAppServerToggle.checked;
   elements.sharedAppServerDescription.textContent = enabled
-    ? `正在使用插件拥有且已通过健康检查的后台（端口 ${snapshot?.shared_app_server_port ?? ""}）`
-    : "默认关闭，不影响 Codex 官方后台";
+    ? `يُستخدم الخادم المشترك الذي يملكه الملحق وتم التحقق من سلامته(المنفذ ${snapshot?.shared_app_server_port ?? ""})`
+    : "متوقف افتراضياً ولا يؤثر في خادم Codex الرسمي";
   void callTool("set_shared_app_server_enabled", { enabled });
 });
 elements.retryPrompt.addEventListener("input", updatePromptState);
@@ -813,7 +905,7 @@ if (new URLSearchParams(window.location.search).has("preview")) {
   render(previewSnapshot());
 } else {
   app = new App({ name: "Codex Auto Retry", version: "0.7.12" });
-  app.onerror = (error) => showNotice(error instanceof Error ? error.message : "连接失败", true);
+  app.onerror = (error) => showNotice(error instanceof Error ? error.message : "فشل الاتصال", true);
   app.onhostcontextchanged = handleHostContext;
   app.ontoolresult = (result) => {
     const next = extractSnapshot(result as ToolResult);
@@ -825,7 +917,7 @@ if (new URLSearchParams(window.location.search).has("preview")) {
       if (context) handleHostContext(context);
       return callTool("get_auto_retry_status");
     })
-    .catch((error) => showNotice(error instanceof Error ? error.message : "连接失败", true));
+    .catch((error) => showNotice(error instanceof Error ? error.message : "فشل الاتصال", true));
 }
 
 function previewSnapshot(): ManagementSnapshot {
@@ -838,7 +930,7 @@ function previewSnapshot(): ManagementSnapshot {
     shared_app_server_enabled: false,
     startup_approved: "enabled",
     shared_app_server_port: 49621,
-    retry_prompt: "继续",
+    retry_prompt: "تابع",
     max_recovery_attempts: 15,
     max_consecutive_retries: 5,
     memory_limit_mb: 1024,
@@ -861,7 +953,7 @@ function previewSnapshot(): ManagementSnapshot {
     retries: [
       {
         thread_id: "019f9d5d-9c82-75b1-b7c0-20a658af0423",
-        label: "任务 019f9d5d",
+        label: "مهمة 019f9d5d",
         state: "running",
         class: "server",
         seconds_remaining: 0,
@@ -876,7 +968,7 @@ function previewSnapshot(): ManagementSnapshot {
       },
       {
         thread_id: "019f9d5d-9c82-75b1-b7c0-20a658af0424",
-        label: "任务 019f9d5e",
+        label: "مهمة 019f9d5e",
         state: "pending",
         class: "rate_limit",
         due_at: new Date(now + 42_000).toISOString(),
@@ -891,7 +983,7 @@ function previewSnapshot(): ManagementSnapshot {
       },
       {
         thread_id: "019f9d5d-9c82-75b1-b7c0-20a658af0425",
-        label: "任务 019f9d5f",
+        label: "مهمة 019f9d5f",
         state: "pending",
         class: "transient",
         due_at: new Date(now + 126_000).toISOString(),
@@ -906,7 +998,7 @@ function previewSnapshot(): ManagementSnapshot {
       },
       {
         thread_id: "019f9d5d-9c82-75b1-b7c0-20a658af0426",
-        label: "任务 019f9d60",
+        label: "مهمة 019f9d60",
         state: "stopped",
         class: "server",
         seconds_remaining: 0,

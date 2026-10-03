@@ -298,40 +298,40 @@ func restoreTrayIcon(add func() bool, remove func(), refresh func()) bool {
 func (a *trayApp) refresh() {
 	snapshot, err := a.service.snapshot(time.Now().UTC())
 	if err != nil {
-		a.setTip("Codex Auto Retry - 状态读取失败")
+		a.setTip("Codex Auto Retry - تعذر قراءة الحالة")
 		return
 	}
-	tip := "Codex Auto Retry - 运行中"
+	tip := "Codex Auto Retry - يعمل"
 	iconState := "running"
 	if snapshot.ControllerState == "codex_restart_required" {
-		tip = "Codex Auto Retry - 当前为官方后台；请通过安全启动入口接入共享通道"
+		tip = "Codex Auto Retry - يستخدم الخادم الرسمي؛ افتح Codex عبر التشغيل الآمن للاتصال بالقناة المشتركة"
 		iconState = "paused"
 	} else if snapshot.ControllerState == "codex_not_running" && snapshot.StoppedRetries > 0 {
-		tip = "Codex Auto Retry - Codex 已退出，重试已停止"
+		tip = "Codex Auto Retry - Codex مغلق وتوقفت المحاولات"
 		iconState = "stopped"
 	} else if snapshot.ControllerState == "shared_app_server_disabled" {
-		tip = "Codex Auto Retry - 共享后台已关闭，重试未执行"
+		tip = "Codex Auto Retry - الخادم المشترك متوقف ولم تُنفذ المحاولة"
 		iconState = "paused"
 	} else if snapshot.ControllerState == "shared_app_server_port_reserved" {
-		tip = "Codex Auto Retry - 共享端口被 Windows 保留，重试未执行"
+		tip = "Codex Auto Retry - المنفذ المشترك محجوز من Windows ولم تُنفذ المحاولة"
 		iconState = "stopped"
 	} else if snapshot.ControllerState == "shared_app_server_port_conflict" {
-		tip = fmt.Sprintf("Codex Auto Retry - 首选端口不可用，当前端口 %d", snapshot.SharedAppServerPort)
+		tip = fmt.Sprintf("Codex Auto Retry - المنفذ المفضل غير متاح؛ المنفذ الحالي %d", snapshot.SharedAppServerPort)
 		iconState = "paused"
 	} else if snapshot.ControllerState == "shared_app_server_migration_deferred" {
-		tip = "Codex Auto Retry - 等待 Codex 关闭后完成后台迁移"
+		tip = "Codex Auto Retry - بانتظار إغلاق Codex لإكمال نقل الخادم الخلفي"
 		iconState = "paused"
 	} else if snapshot.Paused {
-		tip = "Codex Auto Retry - 已暂停"
+		tip = "Codex Auto Retry - متوقف مؤقتاً"
 		iconState = "paused"
 	} else if snapshot.ActiveRetries > 0 {
-		tip = fmt.Sprintf("Codex Auto Retry - 正在重试 %d 个任务", snapshot.ActiveRetries)
+		tip = fmt.Sprintf("Codex Auto Retry - جارٍ استئناف %d مهمة", snapshot.ActiveRetries)
 		iconState = "active"
 	} else if seconds, ok := nextRetrySeconds(snapshot.Retries); ok {
-		tip = fmt.Sprintf("Codex Auto Retry - %d 秒后自动重试", seconds)
+		tip = fmt.Sprintf("Codex Auto Retry - المحاولة التلقائية خلال %d ثانية", seconds)
 		iconState = "waiting"
 	} else if snapshot.StoppedRetries > 0 {
-		tip = fmt.Sprintf("Codex Auto Retry - %d 个任务已停止重试", snapshot.StoppedRetries)
+		tip = fmt.Sprintf("Codex Auto Retry - توقفت المحاولات لـ %d مهمة", snapshot.StoppedRetries)
 		iconState = "stopped"
 	}
 	a.setVisual(iconState, tip)
@@ -342,17 +342,17 @@ func (a *trayApp) refresh() {
 	sharedDisabled := stoppedReasonCount(snapshot.Retries, "shared_app_server_disabled")
 	limitStopped := retryLimitStoppedCount(snapshot.Retries)
 	if a.initialized && snapshot.ShowNotifications && restartRequired > a.lastRestartRequired {
-		a.notify("需要重启 Codex", "重启一次 Codex 后，等待中的自动重试会自行恢复。")
+		a.notify("يلزم إعادة تشغيل Codex", "بعد إعادة تشغيل Codex مرة واحدة ستُستأنف المهام المعلقة تلقائياً.")
 	} else if a.initialized && snapshot.ShowNotifications && codexStopped > a.lastCodexStopped {
-		a.notify("Codex 已退出", "相关任务已停止自动重试。启动 Codex 后可从设置中重新开始。")
+		a.notify("Codex مغلق", "توقفت المحاولات التلقائية للمهام المرتبطة. بعد تشغيل Codex يمكنك إعادة تشغيلها من الإعدادات.")
 	} else if a.initialized && snapshot.ShowNotifications && sharedDisabled > a.lastSharedDisabled {
-		a.notify("共享后台已关闭", "自动恢复未执行。请打开共享后台模式，然后重新开始该任务。")
+		a.notify("الخادم المشترك متوقف", "لم يتم الاستئناف التلقائي. فعّل الخادم المشترك ثم أعد تشغيل المهمة.")
 	} else if a.initialized && snapshot.ShowNotifications && goalFailed > a.lastGoalFailed {
-		a.notify("目标停止失败", "目标恢复已停止，但自动设为受阻失败。请从面板重新开始或检查 Codex 状态。")
+		a.notify("فشل إيقاف الهدف", "توقف استئناف الهدف وتم وضعه في حالة محظورة. أعد تشغيله من اللوحة أو تحقق من حالة Codex.")
 	} else if a.initialized && snapshot.ShowNotifications && goalStopped > a.lastGoalStopped {
-		a.notify("目标已自动停止", "目标连续空回复达到上限，目标恢复已停止。")
+		a.notify("تم إيقاف الهدف تلقائياً", "بلغ الهدف حد الاستجابات الفارغة المتتالية وتوقف الاستئناف.")
 	} else if a.initialized && snapshot.ShowNotifications && limitStopped > a.lastStopped {
-		a.notify("自动重试已停止", fmt.Sprintf("有 %d 个任务已达到重试上限。", limitStopped))
+		a.notify("توقف الاستئناف التلقائي", fmt.Sprintf("هناك %d مهمة بلغت حد المحاولات.", limitStopped))
 	}
 	a.lastStopped = limitStopped
 	a.lastGoalStopped = goalStopped
@@ -466,14 +466,14 @@ func (a *trayApp) showMenu() {
 	}
 	appendTrayMenu(menu, mfGrayed, 0, status)
 	appendTrayMenu(menu, mfSeparator, 0, "")
-	appendTrayMenu(menu, mfString, menuOpenSettings, "打开设置…")
-	pauseText := "暂停自动重试"
+	appendTrayMenu(menu, mfString, menuOpenSettings, "فتح الإعدادات…")
+	pauseText := "إيقاف الاستئناف التلقائي مؤقتاً"
 	if snapshot.Paused {
-		pauseText = "恢复自动重试"
+		pauseText = "استئناف المحاولات التلقائية"
 	}
 	appendTrayMenu(menu, mfString, menuTogglePause, pauseText)
 	appendTrayMenu(menu, mfSeparator, 0, "")
-	appendTrayMenu(menu, mfString, menuExit, "退出")
+	appendTrayMenu(menu, mfString, menuExit, "خروج")
 	var point trayPoint
 	procGetCursorPos.Call(uintptr(unsafe.Pointer(&point)))
 	procSetForegroundWindow.Call(a.hwnd)

@@ -58,6 +58,10 @@ func classifyFailure(errorText string, cfg Config) RetryDecision {
 		return RetryDecision{Retry: true, Class: classAuthTransient, Reason: "temporary authentication service failure"}
 	}
 
+	if containsAny(text, "usage limit", "usage_limit") {
+		return RetryDecision{Retry: true, Class: classUsageLimit, Reason: "Codex usage limit"}
+	}
+
 	if containsAny(text,
 		"rate limit", "too many requests", "quota temporarily", "capacity", "overloaded", "try again later",
 	) {

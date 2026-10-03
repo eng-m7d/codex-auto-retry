@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,12 +16,12 @@
           </div>
           <div class="brand-copy">
             <h1>Codex Auto Retry</h1>
-            <p class="service-line" id="service-line">正在连接</p>
+            <p class="service-line" id="service-line">جارٍ الاتصال…</p>
           </div>
         </div>
         <div class="topbar-actions">
-          <span class="version" id="version"></span>
-          <button class="icon-button" id="refresh-button" type="button" title="刷新状态" aria-label="刷新状态">
+          <span class="version technical" id="version"></span>
+          <button class="icon-button" id="refresh-button" type="button" title="تحديث الحالة" aria-label="تحديث الحالة">
             <i data-lucide="refresh-cw"></i>
           </button>
         </div>
@@ -29,36 +29,75 @@
 
       <div class="notice" id="notice" role="status" aria-live="polite" hidden></div>
 
-      <section class="metrics" aria-label="自动重试概况">
+      <section class="metrics" aria-label="ملخص الاستئناف التلقائي">
         <div class="metric">
-          <span class="metric-label">服务</span>
+          <span class="metric-label">الخدمة</span>
           <strong class="metric-value status-value" id="service-status">
             <span class="status-dot status-dot-neutral"></span>
-            连接中
+            جارٍ الاتصال
           </strong>
         </div>
         <div class="metric">
-          <span class="metric-label">队列</span>
-          <strong class="metric-value" id="queue-count">--</strong>
+          <span class="metric-label">قائمة الانتظار</span>
+          <strong class="metric-value technical" id="queue-count">--</strong>
         </div>
         <div class="metric metric-next">
-          <span class="metric-label">下次重试</span>
+          <span class="metric-label">المحاولة التالية</span>
           <strong class="metric-value countdown" id="next-retry">--</strong>
+        </div>
+      </section>
+
+      <section class="usage-section" aria-labelledby="usage-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="usage-heading">استهلاك Codex</h2>
+            <p>بيانات الاستخدام الرسمية للحصة الحالية ومواعيد إعادة التعيين.</p>
+          </div>
+          <span class="scan-time" id="usage-status"></span>
+        </div>
+        <div class="usage-grid">
+          <article class="usage-card">
+            <div class="usage-card-header">
+              <div>
+                <span class="usage-label">حد 5 ساعات</span>
+                <strong class="usage-percent technical" id="usage-five-hour-percent">--</strong>
+              </div>
+              <span class="usage-remaining" id="usage-five-hour-remaining">المتبقي --</span>
+            </div>
+            <div class="usage-progress" role="progressbar" aria-label="استهلاك حد 5 ساعات" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span id="usage-five-hour-bar"></span>
+            </div>
+            <p class="usage-reset">إعادة التعيين: <bdi id="usage-five-hour-reset">--</bdi></p>
+          </article>
+
+          <article class="usage-card">
+            <div class="usage-card-header">
+              <div>
+                <span class="usage-label">الحد الأسبوعي</span>
+                <strong class="usage-percent technical" id="usage-weekly-percent">--</strong>
+              </div>
+              <span class="usage-remaining" id="usage-weekly-remaining">المتبقي --</span>
+            </div>
+            <div class="usage-progress" role="progressbar" aria-label="استهلاك الحد الأسبوعي" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span id="usage-weekly-bar"></span>
+            </div>
+            <p class="usage-reset">إعادة التعيين: <bdi id="usage-weekly-reset">--</bdi></p>
+          </article>
         </div>
       </section>
 
       <section class="queue-section" aria-labelledby="queue-heading">
         <div class="section-heading">
           <div>
-            <h2 id="queue-heading">重试队列</h2>
-            <p id="queue-summary">正在读取</p>
+            <h2 id="queue-heading">قائمة الاستئناف</h2>
+            <p id="queue-summary">جارٍ قراءة الحالة…</p>
           </div>
           <span class="scan-time" id="scan-time"></span>
         </div>
         <div class="queue-list" id="queue-list" aria-live="polite">
           <div class="empty-state loading-state">
             <i data-lucide="clock"></i>
-            <span>正在读取队列</span>
+            <span>جارٍ قراءة قائمة الانتظار…</span>
           </div>
         </div>
       </section>
@@ -66,17 +105,17 @@
       <section class="controls-section" aria-labelledby="settings-heading">
         <div class="section-heading compact-heading">
           <div>
-            <h2 id="settings-heading">设置</h2>
+            <h2 id="settings-heading">الإعدادات</h2>
           </div>
         </div>
 
         <div class="settings-grid">
           <div class="setting-row pause-row">
             <div class="setting-copy">
-              <label for="pause-toggle">自动重试</label>
-              <span id="pause-description">运行中</span>
+              <label for="pause-toggle">الاستئناف التلقائي</label>
+              <span id="pause-description">يعمل</span>
             </div>
-            <label class="switch" title="开启或暂停新的自动重试">
+            <label class="switch" title="تشغيل الاستئناف التلقائي أو إيقافه مؤقتاً">
               <input id="pause-toggle" type="checkbox" role="switch" />
               <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
             </label>
@@ -84,12 +123,12 @@
 
           <div class="setting-row shared-server-row">
             <div class="setting-copy">
-              <label for="shared-app-server-toggle">共享 Codex 后台</label>
-              <span id="shared-app-server-description">默认关闭，不影响 Codex 官方后台</span>
-              <small id="shared-app-server-port" aria-live="polite"></small>
+              <label for="shared-app-server-toggle">خادم Codex المشترك</label>
+              <span id="shared-app-server-description">متوقف افتراضياً ولا يؤثر في خادم Codex الرسمي</span>
+              <small class="technical" id="shared-app-server-port" aria-live="polite"></small>
               <small id="startup-approval-status" aria-live="polite"></small>
             </div>
-            <label class="switch" title="启用前会检查端口、握手、版本和进程归属">
+            <label class="switch" title="يتم التحقق من المنفذ والاتصال والإصدار وملكية العملية قبل التفعيل">
               <input id="shared-app-server-toggle" type="checkbox" role="switch" />
               <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
             </label>
@@ -97,61 +136,66 @@
 
           <div class="prompt-setting">
             <div class="prompt-label-row">
-              <label for="retry-prompt">后备重试文字</label>
-              <span><span id="prompt-count">0</span>/500</span>
+              <label for="retry-prompt">نص المتابعة الاحتياطي</label>
+              <span class="technical"><span id="prompt-count">0</span>/500</span>
             </div>
             <textarea id="retry-prompt" maxlength="500" rows="3" spellcheck="false" disabled></textarea>
             <div class="prompt-actions">
               <span class="field-error" id="prompt-error" role="alert"></span>
               <button class="command-button" id="save-prompt" type="button" disabled>
                 <i data-lucide="save"></i>
-                <span>保存</span>
+                <span>حفظ</span>
               </button>
             </div>
           </div>
+
           <div class="numeric-settings">
-            <label for="max-recovery-attempts">本次故障恢复上限</label>
+            <label for="max-recovery-attempts">الحد الأقصى لمحاولات التعافي من العطل</label>
             <input id="max-recovery-attempts" type="number" min="1" max="1000" inputmode="numeric" />
-            <label for="max-consecutive-retries">连续无进展重试上限</label>
+            <label for="max-consecutive-retries">المحاولات المتتالية دون تقدّم</label>
             <input id="max-consecutive-retries" type="number" min="1" max="100" inputmode="numeric" />
-            <label for="auth-max-attempts">登录异常恢复上限</label>
+            <label for="auth-max-attempts">محاولات التعافي من أخطاء تسجيل الدخول</label>
             <input id="auth-max-attempts" type="number" min="1" max="1000" inputmode="numeric" />
-            <label for="memory-limit-mb">内存保护上限（MB）</label>
+            <label for="memory-limit-mb">حد حماية الذاكرة (MB)</label>
             <input id="memory-limit-mb" type="number" min="128" max="65536" inputmode="numeric" />
+
             <div class="delay-strategy">
-              <span id="delay-strategy-label">等待策略</span>
+              <span id="delay-strategy-label">استراتيجية الانتظار</span>
               <div class="segmented-control" role="group" aria-labelledby="delay-strategy-label">
                 <label>
                   <input type="radio" name="delay-strategy" value="exponential" />
-                  <span>翻倍递增</span>
+                  <span>تضاعف تدريجي</span>
                 </label>
                 <label>
                   <input type="radio" name="delay-strategy" value="linear" />
-                  <span>等差递增</span>
+                  <span>زيادة ثابتة</span>
                 </label>
                 <label>
                   <input type="radio" name="delay-strategy" value="fixed" />
-                  <span>固定间隔</span>
+                  <span>فاصل ثابت</span>
                 </label>
               </div>
             </div>
-            <label for="initial-delay" id="initial-delay-label">首次等待（秒）</label>
+
+            <label for="initial-delay" id="initial-delay-label">الانتظار الأولي (ثانية)</label>
             <input id="initial-delay" type="number" min="1" max="3600" inputmode="numeric" />
-            <label for="max-delay">最大等待（秒）</label>
+            <label for="max-delay">أقصى مدة انتظار (ثانية)</label>
             <input id="max-delay" type="number" min="1" max="86400" inputmode="numeric" />
-            <label for="delay-increment">每次增加（秒）</label>
+            <label for="delay-increment">الزيادة في كل محاولة (ثانية)</label>
             <input id="delay-increment" type="number" min="1" max="3600" inputmode="numeric" />
+
             <div class="delay-preview" id="delay-preview"></div>
             <span class="field-error settings-error" id="settings-error" role="alert"></span>
           </div>
+
           <div class="settings-footer">
             <label class="checkbox-setting">
               <input id="notifications-toggle" type="checkbox" />
-              <span>达到重试上限时显示插件通知</span>
+              <span>إظهار إشعار عند بلوغ الحد الأقصى للمحاولات</span>
             </label>
             <button class="command-button" id="save-settings" type="button" disabled>
               <i data-lucide="save"></i>
-              <span>保存全部设置</span>
+              <span>حفظ جميع الإعدادات</span>
             </button>
           </div>
         </div>

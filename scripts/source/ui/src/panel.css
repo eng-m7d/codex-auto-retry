@@ -1,5 +1,5 @@
 :root {
-  font-family: var(--font-sans, Inter, "Segoe UI", system-ui, sans-serif);
+  font-family: var(--font-sans, Tahoma, "Segoe UI", Arial, system-ui, sans-serif);
   color: var(--color-text-primary, #171918);
   background: var(--color-background-primary, #ffffff);
   font-synthesis: none;
@@ -25,6 +25,8 @@
 html,
 body {
   margin: 0;
+  direction: rtl;
+  text-align: start;
   min-width: 280px;
   background: transparent;
 }
@@ -277,6 +279,97 @@ textarea:focus-visible,
   background: var(--panel-danger);
 }
 
+.usage-section {
+  padding: 15px 0;
+  border-top: 1px solid var(--panel-border);
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.usage-card {
+  min-width: 0;
+  padding: 13px 14px;
+  background: var(--panel-subtle);
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 8px;
+}
+
+.usage-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.usage-label,
+.usage-reset,
+.usage-remaining {
+  color: var(--panel-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.usage-label {
+  display: block;
+}
+
+.usage-percent {
+  display: block;
+  margin-top: 3px;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.usage-remaining {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 999px;
+  background: var(--color-background-primary, #ffffff);
+}
+
+.usage-progress {
+  height: 7px;
+  margin-top: 12px;
+  overflow: hidden;
+  background: var(--panel-border-soft);
+  border-radius: 999px;
+}
+
+.usage-progress > span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  background: var(--panel-positive);
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.usage-progress[data-level="warning"] > span {
+  background: #d28716;
+}
+
+.usage-progress[data-level="danger"] > span {
+  background: var(--panel-danger);
+}
+
+.usage-reset {
+  margin-top: 8px;
+}
+
+.usage-reset bdi,
+.technical,
+input[type="number"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
 .queue-section,
 .controls-section {
   padding: 15px 0 4px;
@@ -377,7 +470,7 @@ textarea:focus-visible,
 
 .queue-state {
   min-width: 76px;
-  text-align: right;
+  text-align: end;
 }
 
 .queue-state strong {
@@ -471,7 +564,7 @@ textarea:focus-visible,
 }
 
 .segmented-control label + label {
-  border-left: 1px solid var(--panel-border);
+  border-inline-start: 1px solid var(--panel-border);
 }
 
 .segmented-control input {
@@ -613,6 +706,18 @@ textarea:focus-visible,
 .switch input:disabled + .switch-track {
   cursor: default;
   opacity: 0.45;
+}
+
+html[dir="rtl"] .switch-thumb {
+  transform: translateX(16px);
+}
+
+html[dir="rtl"] .switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(0);
+}
+
+html[dir="rtl"] .usage-progress > span {
+  margin-inline-start: auto;
 }
 
 .prompt-label-row {
