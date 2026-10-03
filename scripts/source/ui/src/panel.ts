@@ -399,7 +399,7 @@ function renderUsageWindow(
     resetElement.textContent = "--";
     barElement.style.width = "0%";
     progress?.setAttribute("aria-valuenow", "0");
-    delete progress?.dataset.level;
+    if (progress) delete progress.dataset.level;
     return;
   }
 
