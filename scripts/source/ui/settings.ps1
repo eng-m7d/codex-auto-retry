@@ -453,7 +453,7 @@ if (-not $config) {
 $form = [System.Windows.Forms.Form]::new()
 $initialArabic = $script:currentLanguage -eq 'ar'
 $form.RightToLeft = if ($initialArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
-$form.RightToLeftLayout = $initialArabic
+try { $form.RightToLeftLayout = $initialArabic } catch { $form.RightToLeftLayout = $false }
 $form.Text = T 'form_title'
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
@@ -513,7 +513,9 @@ $taskList.FullRowSelect = $true
 $taskList.GridLines = $true
 $taskList.HideSelection = $false
 $taskList.RightToLeft = if ($initialArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
-if ($taskList.PSObject.Properties['RightToLeftLayout']) { $taskList.RightToLeftLayout = $initialArabic }
+if ($taskList.PSObject.Properties['RightToLeftLayout']) {
+    try { $taskList.RightToLeftLayout = $initialArabic } catch { }
+}
 [void]$taskList.Columns.Add((T 'col_task'), 65)
 [void]$taskList.Columns.Add((T 'col_status'), 110)
 [void]$taskList.Columns.Add((T 'col_countdown'), 90)
@@ -1194,7 +1196,16 @@ $timer.add_Tick({
     Update-RuntimeView
 })
 $form.add_Shown({
-    Apply-Language
+    try {
+        Apply-Language
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            'تعذر تطبيق تنسيق اللغة بالكامل، لكن نافذة الإعدادات ستبقى مفتوحة. يمكنك تبديل اللغة أو إعادة فتح النافذة.',
+            'Codex Auto Retry',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        ) | Out-Null
+    }
     Update-RuntimeView
     if ($SmokeTest) {
         [System.IO.File]::WriteAllText(
