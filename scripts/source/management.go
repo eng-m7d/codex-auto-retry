@@ -229,7 +229,7 @@ func (m *managementService) setSharedAppServerEnabled(enabled bool, now time.Tim
 	if config.SharedAppServerEnabled == enabled && config.SharedAppServerRequested == enabled {
 		snapshot, snapshotErr := m.snapshotLocked(now.UTC())
 		if snapshotErr == nil {
-			snapshot.Notice = "共享后台模式未改变"
+			snapshot.Notice = "لم يتغير إعداد الخادم المشترك"
 		}
 		return snapshot, snapshotErr
 	}
@@ -287,9 +287,9 @@ func (m *managementService) setSharedAppServerEnabled(enabled bool, now time.Tim
 	snapshot, err := m.snapshotLocked(now.UTC())
 	if err == nil {
 		if enabled {
-			snapshot.Notice = "共享后台已启用；完全退出 Codex 后，通过安全启动 Codex 入口接入"
+			snapshot.Notice = "تم تفعيل الخادم المشترك؛ أغلق Codex بالكامل ثم افتحه عبر التشغيل الآمن للاتصال"
 		} else {
-			snapshot.Notice = "共享后台模式已关闭，Codex 将使用官方后台"
+			snapshot.Notice = "تم إيقاف الخادم المشترك وسيستخدم Codex الخادم الرسمي"
 		}
 	}
 	return snapshot, err
@@ -319,7 +319,7 @@ func (m *managementService) setRetrySettings(settings RetrySettings, now time.Ti
 	}
 	snapshot, err := m.snapshotLocked(now.UTC())
 	if err == nil {
-		snapshot.Notice = "自动重试设置已保存"
+		snapshot.Notice = "تم حفظ إعدادات الاستئناف التلقائي"
 	}
 	return snapshot, err
 }
@@ -380,7 +380,7 @@ func (m *managementService) setRetryPrompt(prompt string, now time.Time) (Manage
 	}
 	snapshot, err := m.snapshotLocked(now.UTC())
 	if err == nil {
-		snapshot.Notice = "普通对话的重试文字已保存"
+		snapshot.Notice = "تم حفظ نص المتابعة الاحتياطي"
 	}
 	return snapshot, err
 }
@@ -394,9 +394,9 @@ func (m *managementService) setPaused(paused bool, now time.Time) (ManagementSna
 	snapshot, err := m.snapshotLocked(now.UTC())
 	if err == nil {
 		if paused {
-			snapshot.Notice = "自动重试已暂停"
+			snapshot.Notice = "تم إيقاف الاستئناف التلقائي مؤقتاً"
 		} else {
-			snapshot.Notice = "自动重试已恢复"
+			snapshot.Notice = "تم استئناف المحاولات التلقائية"
 		}
 	}
 	return snapshot, err
@@ -425,7 +425,7 @@ func (m *managementService) queueThreadCommand(action ControlCommandAction, thre
 	thread, found := state.Threads[threadID]
 	if !found || (action == commandRestartRetry && thread.Stopped == nil) ||
 		(action != commandRestartRetry && thread.Pending == nil) {
-		return ManagementSnapshot{}, errors.New("该任务当前没有可执行的重试操作")
+		return ManagementSnapshot{}, errors.New("لا توجد حالياً عملية استئناف متاحة لهذه المهمة")
 	}
 	if _, err := queueControlCommand(m.commandDir, action, threadID, now); err != nil {
 		return ManagementSnapshot{}, err
@@ -433,11 +433,11 @@ func (m *managementService) queueThreadCommand(action ControlCommandAction, thre
 	snapshot, err := m.snapshotLocked(now.UTC())
 	if err == nil {
 		if action == commandRetryNow {
-			snapshot.Notice = "已请求立即重试"
+			snapshot.Notice = "تم طلب المحاولة فوراً"
 		} else if action == commandRestartRetry {
-			snapshot.Notice = "已重新开始计数并请求重试"
+			snapshot.Notice = "تمت إعادة ضبط العداد وطلب الاستئناف"
 		} else {
-			snapshot.Notice = "已请求取消这次重试"
+			snapshot.Notice = "تم طلب إلغاء هذه المحاولة"
 		}
 	}
 	return snapshot, err
@@ -468,7 +468,7 @@ func managedRetries(state RuntimeState, now time.Time) []ManagedRetry {
 			}
 			retries = append(retries, ManagedRetry{
 				ThreadID:              threadID,
-				Label:                 "任务 " + shortThreadID(threadID),
+				Label:                 "مهمة " + shortThreadID(threadID),
 				State:                 "pending",
 				Class:                 thread.Pending.Class,
 				DueAt:                 thread.Pending.DueAt.Format(time.RFC3339Nano),
@@ -488,7 +488,7 @@ func managedRetries(state RuntimeState, now time.Time) []ManagedRetry {
 			}
 			retries = append(retries, ManagedRetry{
 				ThreadID:              threadID,
-				Label:                 "任务 " + shortThreadID(threadID),
+				Label:                 "مهمة " + shortThreadID(threadID),
 				State:                 stateName,
 				Class:                 thread.Awaiting.Class,
 				RecoveryAttempt:       thread.Awaiting.Attempt,
@@ -501,7 +501,7 @@ func managedRetries(state RuntimeState, now time.Time) []ManagedRetry {
 		if thread.Stopped != nil && stoppedRetryIsVisible(thread.Stopped, now) {
 			retries = append(retries, ManagedRetry{
 				ThreadID:              threadID,
-				Label:                 "任务 " + shortThreadID(threadID),
+				Label:                 "مهمة " + shortThreadID(threadID),
 				State:                 "stopped",
 				Class:                 thread.Stopped.Class,
 				RecoveryAttempt:       thread.Stopped.Attempts,
