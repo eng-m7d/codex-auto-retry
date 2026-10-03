@@ -12,6 +12,7 @@ const (
 	classNone          FailureClass = "none"
 	classTransient     FailureClass = "transient"
 	classRateLimit     FailureClass = "rate_limit"
+	classUsageLimit    FailureClass = "usage_limit"
 	classServer        FailureClass = "server"
 	classAuthTransient FailureClass = "auth_transient"
 	classAuthLimited   FailureClass = "auth_limited"
