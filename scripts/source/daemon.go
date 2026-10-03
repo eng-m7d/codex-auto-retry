@@ -821,7 +821,7 @@ func (d *daemon) dispatchDueLocked(now time.Time) []RetryJob {
 		if _, active := d.active[threadID]; active {
 			continue
 		}
-		if !thread.RecoveryStartedAt.IsZero() && now.Sub(thread.RecoveryStartedAt) > maxAutomaticRecoveryDuration {
+		if thread.Pending.Class != classUsageLimit && !thread.RecoveryStartedAt.IsZero() && now.Sub(thread.RecoveryStartedAt) > maxAutomaticRecoveryDuration {
 			d.stopPendingForControllerLocked(threadID, thread, now, "recovery_time_limit")
 			continue
 		}
