@@ -129,7 +129,7 @@ func newManagementMCPServer(service *managementService) *mcp.Server {
 		Meta:        managementToolMeta(),
 		Name:        "set_retry_settings",
 		Title:       "تعديل إعدادات الاستئناف التلقائي",
-		Description: "同时تعديل نص المتابعة الاحتياطي、连续无进展重试上限、单次故障恢复上限、固定、翻倍或线性等待策略，以及插件达到上限时的通知设置。",
+		Description: "تعديل نص المتابعة الاحتياطي وحدود المحاولات واستراتيجية الانتظار والإشعارات ضمن إعداد واحد.",
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPointer(false), IdempotentHint: true, OpenWorldHint: boolPointer(false), Title: "تعديل إعدادات الاستئناف التلقائي"},
 	}, func(_ context.Context, _ *mcp.CallToolRequest, input setRetrySettingsInput) (*mcp.CallToolResult, ManagementSnapshot, error) {
 		settings := RetrySettings{
@@ -198,7 +198,7 @@ func newManagementMCPServer(service *managementService) *mcp.Server {
 		Meta:        managementToolMeta(),
 		Name:        "restart_retry",
 		Title:       "إعادة تشغيل المحاولات",
-		Description: "为已经达到任一重试上限的任务重新开始两个计数并المحاولة الآن。",
+		Description: "إعادة ضبط عدادات المهمة التي بلغت أحد حدود المحاولات ثم المحاولة فوراً.",
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPointer(false), OpenWorldHint: boolPointer(false), Title: "إعادة تشغيل المحاولات"},
 	}, func(_ context.Context, _ *mcp.CallToolRequest, input threadControlInput) (*mcp.CallToolResult, ManagementSnapshot, error) {
 		snapshot, err := service.restartRetry(input.ThreadID, time.Now().UTC())
