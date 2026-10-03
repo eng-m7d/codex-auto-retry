@@ -39,7 +39,7 @@ type Config struct {
 
 const legacyRetryPrompt = "Continue the interrupted task from its current state. The previous turn ended because the model provider was temporarily unavailable. First inspect the existing conversation and workspace state, do not repeat completed side effects, then continue toward the user's latest request. Do not discuss the retry mechanism unless it affects the result."
 
-const defaultRetryPrompt = "تابع"
+const defaultRetryPrompt = "继续"
 
 const maxRetryPromptRunes = 500
 
@@ -202,7 +202,7 @@ func loadOrCreateConfigUnlocked(path string) (Config, error) {
 		cfg.SharedAppServerPort = defaultSharedAppServerPort
 		changed = true
 	}
-	if cfg.RetryPrompt == legacyRetryPrompt || cfg.RetryPrompt == "Continue." || cfg.RetryPrompt == "继续" {
+	if cfg.RetryPrompt == legacyRetryPrompt || cfg.RetryPrompt == "Continue." {
 		cfg.RetryPrompt = defaultRetryPrompt
 		changed = true
 	}
