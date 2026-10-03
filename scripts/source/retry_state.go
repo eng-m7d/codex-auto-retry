@@ -408,7 +408,7 @@ func (d *daemon) scheduleFailureLocked(item scannedEvent, key string, now time.T
 		return
 	}
 	recoveryLimit, consecutiveLimit := retryLimitsForDecision(decision, d.config)
-	timeLimitExceeded := now.Sub(thread.RecoveryStartedAt) > maxAutomaticRecoveryDuration
+	timeLimitExceeded := decision.Class != classUsageLimit && now.Sub(thread.RecoveryStartedAt) > maxAutomaticRecoveryDuration
 	if timeLimitExceeded || recoveryAttempt > recoveryLimit || consecutiveRetry > consecutiveLimit {
 		completedAttempts := completedRetryCount(recoveryAttempt)
 		completedConsecutive := completedRetryCount(consecutiveRetry)
@@ -441,6 +441,13 @@ func (d *daemon) scheduleFailureLocked(item scannedEvent, key string, now time.T
 	}
 
 	delay := retryDelay(consecutiveRetry, d.config)
+	dueAt := now.Add(delay)
+	if decision.Class == classUsageLimit {
+		if resetDueAt, ok := usageLimitDueAt(item.Event.ErrorText, now); ok && resetDueAt.After(dueAt) {
+			dueAt = resetDueAt
+			delay = dueAt.Sub(now)
+		}
+	}
 	thread.RecoveryAttempts = recoveryAttempt
 	thread.ConsecutiveRetries = consecutiveRetry
 	thread.CurrentTurnProgress = false
@@ -454,7 +461,7 @@ func (d *daemon) scheduleFailureLocked(item scannedEvent, key string, now time.T
 		FailedAt:            item.Event.Timestamp,
 		OriginTurnStartedAt: originTurnStartedAt,
 		Class:               decision.Class,
-		DueAt:               now.Add(delay),
+		DueAt:               dueAt,
 		CodexHome:           item.Root.CodexHome,
 		RolloutPath:         item.RolloutPath,
 		Attempt:             recoveryAttempt, MaxAttempts: recoveryLimit,
