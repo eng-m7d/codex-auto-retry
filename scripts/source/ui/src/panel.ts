@@ -240,7 +240,7 @@ function render(next: ManagementSnapshot): void {
   elements.pauseToggle.checked = !next.paused;
   elements.sharedAppServerToggle.checked = next.shared_app_server_requested ?? next.shared_app_server_enabled;
   elements.sharedAppServerDescription.textContent = next.shared_app_server_enabled
-    ? `يُستخدم الخادم المشترك الذي يملكه الملحق وتم التحقق من سلامته（المنفذ ${next.shared_app_server_port}）`
+    ? `يُستخدم الخادم المشترك الذي يملكه الملحق وتم التحقق من سلامته(المنفذ ${next.shared_app_server_port})`
     : next.shared_app_server_requested ? "الخادم المشترك غير متاح مؤقتاً؛ تم الاحتفاظ بخيار التفعيل وستتم محاولة استعادته عند التشغيل الآمن" : "متوقف افتراضياً ولا يؤثر في خادم Codex الرسمي";
   elements.sharedAppServerPort.textContent = next.shared_app_server_port > 0 ? `المنفذ ${next.shared_app_server_port}` : "";
   const startupApprovalLabels: Record<ManagementSnapshot["startup_approved"], string> = {
@@ -311,7 +311,7 @@ function renderService(next: ManagementSnapshot): void {
     dot.classList.add("status-dot-danger");
   } else if (next.running && next.controller_state === "shared_app_server_memory_limit_exceeded") {
     label = "حماية ذاكرة الخادم المشترك";
-    detail = `توقف الخادم المشترك عن التحكم（${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB） من دون إجبار Codex على الإغلاق`;
+    detail = `توقف الخادم المشترك عن التحكم(${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB) من دون إجبار Codex على الإغلاق`;
     dot.classList.add("status-dot-warning");
   } else if (next.running && next.controller_state && !["ready", "starting", "official_ipc_ready"].includes(next.controller_state)) {
     label = "خلل في قناة الاستئناف";
@@ -334,13 +334,13 @@ function renderService(next: ManagementSnapshot): void {
     elements.serviceLine.textContent = `${detail}؛ الوضع الحالي للمراقبة فقط ولم يُرسل طلب استئناف تلقائي`;
   }
   if (next.memory_guard_triggered) {
-    elements.serviceLine.textContent = `${detail}؛ تم تشغيل حماية الذاكرة（${next.memory_usage_mb ?? 0} MB/${next.memory_limit_mb} MB）`;
+    elements.serviceLine.textContent = `${detail}؛ تم تشغيل حماية الذاكرة(${next.memory_usage_mb ?? 0} MB/${next.memory_limit_mb} MB)`;
   }
   if (next.shared_app_server_memory_guard_triggered) {
-    elements.serviceLine.textContent = `${elements.serviceLine.textContent}؛ تم تشغيل حماية ذاكرة الخادم المشترك（${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB） من دون إجبار Codex على الإغلاق`;
+    elements.serviceLine.textContent = `${elements.serviceLine.textContent}؛ تم تشغيل حماية ذاكرة الخادم المشترك(${next.shared_app_server_memory_usage_mb ?? 0} MB/${next.shared_app_server_memory_limit_mb ?? 0} MB) من دون إجبار Codex على الإغلاق`;
   }
   if (next.retry_safety_warning) {
-    elements.serviceLine.textContent = `${elements.serviceLine.textContent}；${next.retry_safety_warning}`;
+    elements.serviceLine.textContent = `${elements.serviceLine.textContent}؛${next.retry_safety_warning}`;
   }
   elements.pauseDescription.textContent = next.paused ? "المحاولات الجديدة متوقفة مؤقتاً" : "يعمل";
 }
@@ -797,15 +797,15 @@ function updateDelayPreview(
     if (strategy === "exponential") delay = Math.min(delay * 2, maxDelay);
     if (strategy === "linear") delay = Math.min(delay + delayIncrement, maxDelay);
   }
-  const suffix = consecutiveRetries > visibleCount ? "，…" : "";
-  elements.delayPreview.textContent = `تسلسل الانتظار: ${delays.map(formatPreviewDelay).join("，")}${suffix}`;
+  const suffix = consecutiveRetries > visibleCount ? "، …" : "";
+  elements.delayPreview.textContent = `تسلسل الانتظار: ${delays.map(formatPreviewDelay).join("، ")}${suffix}`;
 }
 
 function formatPreviewDelay(seconds: number): string {
-  if (seconds < 60) return `${seconds} ث`;
-  if (seconds % 3600 === 0) return `${seconds / 3600} ساعة`;
-  if (seconds % 60 === 0) return `${seconds / 60} دقيقة`;
-  return `${seconds} ث`;
+  if (seconds < 60) return `${numberFormatter.format(seconds)} ث`;
+  if (seconds % 3600 === 0) return `${numberFormatter.format(seconds / 3600)} ساعة`;
+  if (seconds % 60 === 0) return `${numberFormatter.format(seconds / 60)} دقيقة`;
+  return `${numberFormatter.format(seconds)} ث`;
 }
 
 function setBusy(active: boolean): void {
@@ -878,7 +878,7 @@ elements.pauseToggle.addEventListener("change", () => void callTool("set_auto_re
   elements.sharedAppServerToggle.addEventListener("change", () => {
   const enabled = elements.sharedAppServerToggle.checked;
   elements.sharedAppServerDescription.textContent = enabled
-    ? `يُستخدم الخادم المشترك الذي يملكه الملحق وتم التحقق من سلامته（المنفذ ${snapshot?.shared_app_server_port ?? ""}）`
+    ? `يُستخدم الخادم المشترك الذي يملكه الملحق وتم التحقق من سلامته(المنفذ ${snapshot?.shared_app_server_port ?? ""})`
     : "متوقف افتراضياً ولا يؤثر في خادم Codex الرسمي";
   void callTool("set_shared_app_server_enabled", { enabled });
 });
