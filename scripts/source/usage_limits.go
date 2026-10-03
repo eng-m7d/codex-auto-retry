@@ -113,7 +113,8 @@ func readCodexUsageSnapshot(ctx context.Context, codexHome string, now time.Time
 	if err != nil {
 		return CodexUsageSnapshot{}, err
 	}
-	command := exec.CommandContext(ctx, executable, "app-server")\n\tprepareUsageCommand(command)
+	command := exec.CommandContext(ctx, executable, "app-server")
+	prepareUsageCommand(command)
 	if strings.TrimSpace(codexHome) != "" {
 		command.Env = replaceUsageEnvironmentValue(os.Environ(), "CODEX_HOME", codexHome)
 	}
