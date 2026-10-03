@@ -451,6 +451,9 @@ if (-not $config) {
 }
 
 $form = [System.Windows.Forms.Form]::new()
+$initialArabic = $script:currentLanguage -eq 'ar'
+$form.RightToLeft = if ($initialArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
+$form.RightToLeftLayout = $initialArabic
 $form.Text = T 'form_title'
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
@@ -509,6 +512,8 @@ $taskList.View = 'Details'
 $taskList.FullRowSelect = $true
 $taskList.GridLines = $true
 $taskList.HideSelection = $false
+$taskList.RightToLeft = if ($initialArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
+if ($taskList.PSObject.Properties['RightToLeftLayout']) { $taskList.RightToLeftLayout = $initialArabic }
 [void]$taskList.Columns.Add((T 'col_task'), 65)
 [void]$taskList.Columns.Add((T 'col_status'), 110)
 [void]$taskList.Columns.Add((T 'col_countdown'), 90)
@@ -564,6 +569,7 @@ $settingsGroup.Controls.AddRange(@($enabledCheck, $sharedCheck, $sharedPortValue
 $promptLabel = New-Label (T 'label_prompt') 18 85 180 22
 $settingsGroup.Controls.Add($promptLabel)
 $promptBox = [System.Windows.Forms.TextBox]::new()
+$promptBox.RightToLeft = if ($initialArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
 $promptBox.Location = [System.Drawing.Point]::new(18, 108)
 $promptBox.Size = [System.Drawing.Size]::new(540, 54)
 $promptBox.Multiline = $true
@@ -982,14 +988,28 @@ function Invoke-TaskAction {
     Update-RuntimeView
 }
 
+function Restart-SettingsForLanguageChange {
+    $powershellPath = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    if (-not (Test-Path -LiteralPath $powershellPath -PathType Leaf)) { $powershellPath = 'powershell.exe' }
+    $arguments = @(
+        '-NoLogo',
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', (ConvertTo-ProcessArgument $PSCommandPath),
+        '-DataDir', (ConvertTo-ProcessArgument $DataDir),
+        '-Executable', (ConvertTo-ProcessArgument $Executable)
+    ) -join ' '
+    try {
+        Start-Process -FilePath $powershellPath -ArgumentList $arguments -WindowStyle Hidden | Out-Null
+        $form.Close()
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 function Apply-Language {
-    $isArabic = $script:currentLanguage -eq 'ar'
-    $direction = if ($isArabic) { [System.Windows.Forms.RightToLeft]::Yes } else { [System.Windows.Forms.RightToLeft]::No }
-    $form.RightToLeft = $direction
-    $form.RightToLeftLayout = $isArabic
-    $taskList.RightToLeft = $direction
-    if ($taskList.PSObject.Properties['RightToLeftLayout']) { $taskList.RightToLeftLayout = $isArabic }
-    $promptBox.RightToLeft = $direction
     foreach ($numeric in @($recoveryBox, $consecutiveBox, $authBox, $memoryBox, $initialDelayBox, $maxDelayBox, $incrementBox)) {
         $numeric.RightToLeft = [System.Windows.Forms.RightToLeft]::No
     }
@@ -1049,8 +1069,13 @@ $langButton.add_Click({
     try {
         $langConfig = [ordered]@{ language = $script:currentLanguage }
         [System.IO.File]::WriteAllText($uiLangPath, ($langConfig | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))
-    } catch { }
-    Apply-Language
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show('تعذر حفظ اللغة المختارة.', 'Codex Auto Retry', 'OK', 'Warning') | Out-Null
+        return
+    }
+    if (-not (Restart-SettingsForLanguageChange)) {
+        [System.Windows.Forms.MessageBox]::Show('تم حفظ اللغة، لكن تعذر إعادة فتح نافذة الإعدادات تلقائياً. أغلقها وافتحها من جديد.', 'Codex Auto Retry', 'OK', 'Warning') | Out-Null
+    }
 })
 
 $taskList.add_SelectedIndexChanged({ Update-ActionButtons })
