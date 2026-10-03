@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -72,6 +73,8 @@ func (m *managementService) usageSnapshotLocked(config Config, now time.Time) Co
 		if m.usageCache.Available {
 			stale := m.usageCache
 			stale.Error = "refresh_failed"
+			m.usageCache = stale
+			m.usageCacheAt = now
 			return stale
 		}
 		snapshot = CodexUsageSnapshot{
@@ -106,7 +109,7 @@ func preferredUsageCodexHome(config Config) string {
 }
 
 func readCodexUsageSnapshot(ctx context.Context, codexHome string, now time.Time) (CodexUsageSnapshot, error) {
-	executable, err := findCodexExecutable()
+	executable, err := findUsageCodexExecutable()
 	if err != nil {
 		return CodexUsageSnapshot{}, err
 	}
@@ -269,4 +272,45 @@ func usageWindowSnapshot(window *appRateLimitWindow) *UsageWindowSnapshot {
 		result.ResetsAt = time.Unix(*window.ResetsAt, 0).UTC().Format(time.RFC3339Nano)
 	}
 	return result
+}
+
+func findUsageCodexExecutable() (string, error) {
+	if executable, err := exec.LookPath("codex"); err == nil {
+		return executable, nil
+	}
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		root := filepath.Join(localAppData, "OpenAI", "Codex", "bin")
+		var candidates []string
+		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+			if err == nil && !entry.IsDir() && strings.EqualFold(entry.Name(), "codex.exe") {
+				candidates = append(candidates, path)
+			}
+			return nil
+		})
+		if len(candidates) > 0 {
+			sort.Slice(candidates, func(i, j int) bool {
+				left, _ := os.Stat(candidates[i])
+				right, _ := os.Stat(candidates[j])
+				if left == nil || right == nil {
+					return candidates[i] > candidates[j]
+				}
+				return left.ModTime().After(right.ModTime())
+			})
+			return candidates[0], nil
+		}
+	}
+	if appData := os.Getenv("APPDATA"); appData != "" {
+		root := filepath.Join(appData, "npm", "node_modules", "@openai", "codex")
+		var candidate string
+		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+			if candidate == "" && err == nil && !entry.IsDir() && strings.EqualFold(entry.Name(), "codex.exe") {
+				candidate = path
+			}
+			return nil
+		})
+		if candidate != "" {
+			return candidate, nil
+		}
+	}
+	return "", errors.New("Codex executable was not found")
 }
